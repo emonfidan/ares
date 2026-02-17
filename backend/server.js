@@ -11,10 +11,10 @@ const PORT = 3001;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Basit kullanıcı veritabanı dosyası
+// Basit kullanıcı veritabanı dosyası - Simple user database file
 const USERS_FILE = path.join(__dirname, 'users.json');
 
-// Kullanıcı dosyası yoksa oluştur
+// Kullanıcı dosyası yoksa oluştur - If the user file does not exist, create it
 if (!fs.existsSync(USERS_FILE)) {
     const initialUsers = [
         {
@@ -57,13 +57,13 @@ if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(initialUsers, null, 2));
 }
 
-// Kullanıcıları oku
+// Kullanıcıları oku - Read users
 function getUsers() {
     const data = fs.readFileSync(USERS_FILE, 'utf8');
     return JSON.parse(data);
 }
 
-// Kullanıcıları kaydet
+// Kullanıcıları kaydet - Register users 
 function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
@@ -92,7 +92,7 @@ app.post('/api/login', (req, res) => {
         });
     }
 
-    // Hesap durumu kontrolü
+    // Hesap durumu kontrolü - Account status check
     if (user.accountStatus === 'Locked') {
         return res.status(403).json({ 
             success: false, 
@@ -107,17 +107,17 @@ app.post('/api/login', (req, res) => {
         });
     }
 
-    // Şifre kontrolü
+    // Şifre kontrolü - Password check
     if (user.password !== password) {
-        // Başarısız girişim sayacını artır
+        // Başarısız girişim sayacını artır - Increase the failed attempt counter
         user.failedAttempts = (user.failedAttempts || 0) + 1;
         
-        // 5 başarısız denemeden sonra hesabı challenge durumuna al
+        // 5 başarısız denemeden sonra hesabı challenge durumuna al - After 5 failed attempts, put the account in challenge mode
         if (user.failedAttempts >= 5 && user.failedAttempts < 10) {
             user.accountStatus = 'Challenged';
         }
         
-        // 10 başarısız denemeden sonra hesabı kilitle
+        // 10 başarısız denemeden sonra hesabı kilitle - Lock the account after 10 failed attempts.
         if (user.failedAttempts >= 10) {
             user.accountStatus = 'Locked';
         }
@@ -125,13 +125,18 @@ app.post('/api/login', (req, res) => {
         saveUsers(users);
         
         return res.status(401).json({ 
-            success: false, 
-            message: 'Invalid credentials',
-            remainingAttempts: Math.max(0, 10 - user.failedAttempts)
+            success: false,
+            message: user.accountStatus === 'Locked'
+                ? 'Account locked due to too many failed attempts'
+                : user.accountStatus === 'Challenged'
+                ? 'Warning: multiple failed attempts'
+                : 'Invalid credentials',
+            remainingAttempts: Math.max(0, 10 - user.failedAttempts),
+            accountStatus: user.accountStatus
         });
     }
 
-    // Başarılı giriş
+    // Başarılı giriş - Successful login
     user.failedAttempts = 0;
     user.accountStatus = 'Active';
     user.lastLoginIP = clientIP;
@@ -149,6 +154,17 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+function isStrongPassword(password) {
+    // at least 8 chars, 1 uppercase, 1 symbol
+    const lengthOK = password.length >= 8;
+    const upperOK = /[A-Z]/.test(password);
+    const symbolOK = /[^A-Za-z0-9]/.test(password);
+
+    return lengthOK && upperOK && symbolOK;
+}
+function isValidName(name) {
+    return /^[A-Za-z\s]+$/.test(name);
+}
 // Register endpoint
 app.post('/api/register', (req, res) => {
     const { email, phone, password, name } = req.body;
@@ -160,17 +176,34 @@ app.post('/api/register', (req, res) => {
         });
     }
 
+    // Name validation
+    if (!isValidName(name)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Name can only contain letters'
+        });
+    }
+
+    // Password validation
+    if (!isStrongPassword(password)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must contain uppercase, symbol, and be 8+ characters'
+        });
+    }
+
     const users = getUsers();
     
-    // Email zaten kayıtlı mı kontrol et
+    // Email zaten kayıtlı mı kontrol et - // Check if the email is already registered.
     if (users.find(u => u.email === email)) {
         return res.status(409).json({ 
             success: false, 
             message: 'Email already registered' 
         });
+
     }
 
-    // Yeni kullanıcı oluştur
+    // Yeni kullanıcı oluştur - Create new user 
     const newUser = {
         id: users.length + 1,
         email,
@@ -213,7 +246,7 @@ app.post('/api/auth/google', (req, res) => {
     let user = users.find(u => u.socialProvider === 'google' && u.socialId === googleId);
 
     if (!user) {
-        // Yeni Google kullanıcısı oluştur
+        // Yeni Google kullanıcısı oluştur -- Create a new Google user
         user = {
             id: users.length + 1,
             email,
@@ -230,6 +263,7 @@ app.post('/api/auth/google', (req, res) => {
         saveUsers(users);
     } else {
         // Mevcut kullanıcı - son giriş IP'sini güncelle
+        // Current user - update last login IP address.
         user.lastLoginIP = req.ip;
         saveUsers(users);
     }
@@ -262,6 +296,7 @@ app.post('/api/auth/facebook', (req, res) => {
 
     if (!user) {
         // Yeni Facebook kullanıcısı oluştur
+        // Create a new Facebook user
         user = {
             id: users.length + 1,
             email,
@@ -278,6 +313,8 @@ app.post('/api/auth/facebook', (req, res) => {
         saveUsers(users);
     } else {
         // Mevcut kullanıcı - son giriş IP'sini güncelle
+        // Current user - update last login IP
+
         user.lastLoginIP = req.ip;
         saveUsers(users);
     }

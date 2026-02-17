@@ -12,6 +12,8 @@ const LoginForm = ({ onLoginSuccess }) => {
   });
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isLoading, setIsLoading] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
+
 
   const handleInputChange = (e) => {
     setFormData({
@@ -40,6 +42,7 @@ const LoginForm = ({ onLoginSuccess }) => {
       const data = await response.json();
 
       if (data.success) {
+        setAttemptsLeft(null);
         setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
         // Dashboard'a yönlendir
         setTimeout(() => {
@@ -47,6 +50,13 @@ const LoginForm = ({ onLoginSuccess }) => {
         }, 1000);
       } else {
         setMessage({ text: data.message, type: 'error' });
+
+        //show attempts left if backend sends it 
+        if (typeof data.remainingAttempts === 'number') {
+          setAttemptsLeft(data.remainingAttempts);
+        } else {
+          setAttemptsLeft(null);
+        }
       }
     } catch (error) {
       setMessage({ text: 'Connection error. Please try again.', type: 'error' });
@@ -117,6 +127,7 @@ const LoginForm = ({ onLoginSuccess }) => {
       const data = await response.json();
 
       if (data.success) {
+        setAttemptsLeft(null);
         setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
         setTimeout(() => {
           onLoginSuccess(data.user);
@@ -181,7 +192,7 @@ const LoginForm = ({ onLoginSuccess }) => {
         <div className="tab-buttons">
           <button
             className={isLogin ? 'tab-button active' : 'tab-button'}
-            onClick={() => setIsLogin(true)}
+            onClick={() => { setIsLogin(true); setAttemptsLeft(null); }}
             id="login-tab"
           >
             Login
@@ -198,6 +209,11 @@ const LoginForm = ({ onLoginSuccess }) => {
         {message.text && (
           <div className={`message ${message.type}`} id="message-box">
             {message.text}
+          </div>
+        )}
+        {isLogin && attemptsLeft !== null && (
+          <div className="message info" id="attempts-left">
+            Attempts left: {attemptsLeft}
           </div>
         )}
 
@@ -338,7 +354,7 @@ const LoginForm = ({ onLoginSuccess }) => {
         <div className="test-credentials">
           <p><strong>Test Credentials:</strong></p>
           <p>Email: test@example.com</p>
-          <p>Password: password123</p>
+          <p>Password: Password123!</p>
         </div>
       </div>
     </div>
