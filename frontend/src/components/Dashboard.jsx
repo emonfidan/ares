@@ -1,7 +1,16 @@
-import { useState } from 'react';
 import './Dashboard.css';
 
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user, riskAssessment, onLogout }) => {
+  const getRiskColorClass = (level) => {
+    if (!level) return '';
+    switch (level) {
+      case 'LOW': return 'status-active';
+      case 'MEDIUM': return 'status-challenged';
+      case 'HIGH': return 'status-locked';
+      default: return '';
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-card">
@@ -24,8 +33,48 @@ const Dashboard = ({ user, onLogout }) => {
             </p>
           )}
         </div>
-        
-        {/* Buradan aşağısı kaldırıldı */}
+
+        {riskAssessment && (
+          <div className="account-status">
+            <div className="status-item">
+              <span className="status-label">Risk Level</span>
+              <span className={`status-value ${getRiskColorClass(riskAssessment.riskLevel)}`}>
+                {riskAssessment.riskLevel || 'N/A'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Risk Score</span>
+              <span className="status-value">{riskAssessment.riskScore}/100</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">LLM Verdict</span>
+              <span className={`status-value ${getRiskColorClass(
+                riskAssessment.llmVerdict === 'ALLOW' ? 'LOW' :
+                  riskAssessment.llmVerdict === 'CHALLENGE' ? 'MEDIUM' :
+                    riskAssessment.llmVerdict === 'BLOCK' ? 'HIGH' : ''
+              )}`}>
+                {riskAssessment.llmVerdict || 'Not triggered'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Account Status</span>
+              <span className={`status-value status-${(user.accountStatus || 'active').toLowerCase()}`}>
+                {user.accountStatus || 'Active'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {riskAssessment?.factors?.length > 0 && (
+          <div className="info-box">
+            <h3>Risk Factors</h3>
+            <ul>
+              {riskAssessment.factors.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

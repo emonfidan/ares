@@ -227,3 +227,126 @@
 .test-credentials strong {
   color: #333;
 }
+
+/* Risk Assessment Styles */
+.message.warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.risk-badge {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.risk-badge.risk-low {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.risk-badge.risk-medium {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
+.risk-badge.risk-high {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.risk-label {
+  font-weight: 700;
+}
+
+.risk-score {
+  font-weight: 600;
+}
+
+.llm-verdict {
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.risk-factors {
+  width: 100%;
+  margin: 4px 0 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.risk-factors li {
+  margin-bottom: 2px;
+}
+
+/* Security Challenge Overlay */
+.challenge-overlay {
+  padding: 24px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe0a3 100%);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  text-align: center;
+  animation: challengePulse 2s ease-in-out infinite;
+}
+
+@keyframes challengePulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 193, 7, 0);
+  }
+}
+
+.challenge-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.challenge-overlay h3 {
+  font-size: 18px;
+  color: #856404;
+  margin: 0 0 8px 0;
+  font-weight: 700;
+}
+
+.challenge-overlay p {
+  font-size: 14px;
+  color: #856404;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.challenge-button {
+  padding: 14px 32px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.challenge-button:hover {
+  background: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}

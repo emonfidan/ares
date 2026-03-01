@@ -14,6 +14,8 @@ const LoginForm = ({ onLoginSuccess }) => {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(null);
+  const [riskInfo, setRiskInfo] = useState(null);
+  const [pendingChallenge, setPendingChallenge] = useState(null); // holds { user, riskAssessment } while challenge is shown
 
 
   const handleInputChange = (e) => {
@@ -44,15 +46,20 @@ const LoginForm = ({ onLoginSuccess }) => {
 
       if (data.success) {
         setAttemptsLeft(null);
-        setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
-        // Dashboard'a yönlendir
-        setTimeout(() => {
-          onLoginSuccess(data.user);
-        }, 1000);
+        if (data.riskAssessment) setRiskInfo(data.riskAssessment);
+
+        if (data.challengeRequired) {
+          setPendingChallenge({ user: data.user, riskAssessment: data.riskAssessment });
+          setMessage({ text: 'Security challenge required — please verify below.', type: 'warning' });
+        } else {
+          setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
+          setTimeout(() => {
+            onLoginSuccess(data.user, data.riskAssessment);
+          }, 1500);
+        }
       } else {
         setMessage({ text: data.message, type: 'error' });
-
-        //show attempts left if backend sends it 
+        if (data.riskAssessment) setRiskInfo(data.riskAssessment);
         if (typeof data.remainingAttempts === 'number') {
           setAttemptsLeft(data.remainingAttempts);
         } else {
@@ -116,10 +123,18 @@ const LoginForm = ({ onLoginSuccess }) => {
         const data = await response.json();
         if (data.success) {
           setAttemptsLeft(null);
-          setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
-          setTimeout(() => onLoginSuccess(data.user), 1000);
+          if (data.riskAssessment) setRiskInfo(data.riskAssessment);
+
+          if (data.challengeRequired) {
+            setPendingChallenge({ user: data.user, riskAssessment: data.riskAssessment });
+            setMessage({ text: 'Security challenge required — please verify below.', type: 'warning' });
+          } else {
+            setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
+            setTimeout(() => onLoginSuccess(data.user, data.riskAssessment), 1500);
+          }
         } else {
           setMessage({ text: data.message, type: 'error' });
+          if (data.riskAssessment) setRiskInfo(data.riskAssessment);
         }
       } catch (error) {
         setMessage({ text: 'Google login failed. Please try again.', type: 'error' });
@@ -158,18 +173,35 @@ const LoginForm = ({ onLoginSuccess }) => {
       const data = await response.json();
 
       if (data.success) {
-        setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
-        setTimeout(() => {
-          onLoginSuccess(data.user);
-        }, 1000);
+        if (data.riskAssessment) setRiskInfo(data.riskAssessment);
+
+        if (data.challengeRequired) {
+          setPendingChallenge({ user: data.user, riskAssessment: data.riskAssessment });
+          setMessage({ text: 'Security challenge required — please verify below.', type: 'warning' });
+        } else {
+          setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
+          setTimeout(() => {
+            onLoginSuccess(data.user, data.riskAssessment);
+          }, 1500);
+        }
       } else {
         setMessage({ text: data.message, type: 'error' });
+        if (data.riskAssessment) setRiskInfo(data.riskAssessment);
       }
     } catch (error) {
       setMessage({ text: 'Facebook login failed. Please try again.', type: 'error' });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const solveChallenge = () => {
+    if (!pendingChallenge) return;
+    setMessage({ text: `Verified! Welcome, ${pendingChallenge.user.name}!`, type: 'success' });
+    setPendingChallenge(null);
+    setTimeout(() => {
+      onLoginSuccess(pendingChallenge.user, pendingChallenge.riskAssessment);
+    }, 1000);
   };
 
   return (
@@ -205,6 +237,33 @@ const LoginForm = ({ onLoginSuccess }) => {
         {isLogin && attemptsLeft !== null && (
           <div className="message info" id="attempts-left">
             Attempts left: {attemptsLeft}
+          </div>
+        )}
+
+        {riskInfo && (
+          <div className={`risk-badge risk-${riskInfo.riskLevel?.toLowerCase()}`} id="risk-info">
+            <span className="risk-label">Risk: {riskInfo.riskLevel}</span>
+            <span className="risk-score">Score: {riskInfo.riskScore}/100</span>
+            {riskInfo.llmVerdict && (
+              <span className="llm-verdict">LLM Verdict: {riskInfo.llmVerdict}</span>
+            )}
+            {riskInfo.factors && riskInfo.factors.length > 0 && (
+              <ul className="risk-factors">
+                {riskInfo.factors.map((f, i) => <li key={i}>{f}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Security Challenge Overlay — shown after risk badge when LLM issues CHALLENGE */}
+        {pendingChallenge && (
+          <div className="challenge-overlay" id="challenge-overlay">
+            <div className="challenge-icon">🛡️</div>
+            <h3>Security Verification Required</h3>
+            <p>Unusual activity detected on your account. Please verify you are human to continue.</p>
+            <button className="challenge-button" id="challenge-verify-btn" onClick={solveChallenge}>
+              ✅ Click here to verify
+            </button>
           </div>
         )}
 
@@ -343,9 +402,14 @@ const LoginForm = ({ onLoginSuccess }) => {
         </div>
 
         <div className="test-credentials">
-          <p><strong>Test Credentials:</strong></p>
-          <p>Email: test@example.com</p>
-          <p>Password: Password123!</p>
+          <p><strong>Test Credentials:</strong> (Password for all: Password123!)</p>
+          <p>🟢 clean@example.com — LOW risk</p>
+          <p>🟡 suspicious@example.com — MEDIUM (6 failed attempts)</p>
+          <p>🟡 traveler@example.com — MEDIUM (new IP)</p>
+          <p>🔴 bruteforce@example.com — HIGH (fails + IP)</p>
+          <p>⚠️ challenged@example.com — Challenged state</p>
+          <p>🔒 locked@example.com — Locked (blocked)</p>
+          <p>🚫 suspended@example.com — Suspended (blocked)</p>
         </div>
       </div>
     </div>
