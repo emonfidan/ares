@@ -74,36 +74,36 @@ app.post('/api/login', (req, res) => {
     const clientIP = req.ip || req.connection.remoteAddress;
 
     if (!identifier || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Identifier and password are required' 
+        return res.status(400).json({
+            success: false,
+            message: 'Identifier and password are required'
         });
     }
 
     const users = getUsers();
-    const user = users.find(u => 
+    const user = users.find(u =>
         (u.email === identifier || u.phone === identifier) && u.password
     );
 
     if (!user) {
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Invalid credentials' 
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid credentials'
         });
     }
 
     // Hesap durumu kontrolü - Account status check
     if (user.accountStatus === 'Locked') {
-        return res.status(403).json({ 
-            success: false, 
-            message: 'Account is locked. Please contact support.' 
+        return res.status(403).json({
+            success: false,
+            message: 'Account is locked. Please contact support.'
         });
     }
 
     if (user.accountStatus === 'Suspended') {
-        return res.status(403).json({ 
-            success: false, 
-            message: 'Account is suspended.' 
+        return res.status(403).json({
+            success: false,
+            message: 'Account is suspended.'
         });
     }
 
@@ -111,26 +111,26 @@ app.post('/api/login', (req, res) => {
     if (user.password !== password) {
         // Başarısız girişim sayacını artır - Increase the failed attempt counter
         user.failedAttempts = (user.failedAttempts || 0) + 1;
-        
+
         // 5 başarısız denemeden sonra hesabı challenge durumuna al - After 5 failed attempts, put the account in challenge mode
         if (user.failedAttempts >= 5 && user.failedAttempts < 10) {
             user.accountStatus = 'Challenged';
         }
-        
+
         // 10 başarısız denemeden sonra hesabı kilitle - Lock the account after 10 failed attempts.
         if (user.failedAttempts >= 10) {
             user.accountStatus = 'Locked';
         }
-        
+
         saveUsers(users);
-        
-        return res.status(401).json({ 
+
+        return res.status(401).json({
             success: false,
             message: user.accountStatus === 'Locked'
                 ? 'Account locked due to too many failed attempts'
                 : user.accountStatus === 'Challenged'
-                ? 'Warning: multiple failed attempts'
-                : 'Invalid credentials',
+                    ? 'Warning: multiple failed attempts'
+                    : 'Invalid credentials',
             remainingAttempts: Math.max(0, 10 - user.failedAttempts),
             accountStatus: user.accountStatus
         });
@@ -142,8 +142,8 @@ app.post('/api/login', (req, res) => {
     user.lastLoginIP = clientIP;
     saveUsers(users);
 
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         message: 'Login successful',
         user: {
             id: user.id,
@@ -170,9 +170,9 @@ app.post('/api/register', (req, res) => {
     const { email, phone, password, name } = req.body;
 
     if (!email || !password || !name) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Email, password, and name are required' 
+        return res.status(400).json({
+            success: false,
+            message: 'Email, password, and name are required'
         });
     }
 
@@ -193,12 +193,12 @@ app.post('/api/register', (req, res) => {
     }
 
     const users = getUsers();
-    
+
     // Email zaten kayıtlı mı kontrol et - // Check if the email is already registered.
     if (users.find(u => u.email === email)) {
-        return res.status(409).json({ 
-            success: false, 
-            message: 'Email already registered' 
+        return res.status(409).json({
+            success: false,
+            message: 'Email already registered'
         });
 
     }
@@ -220,8 +220,8 @@ app.post('/api/register', (req, res) => {
     users.push(newUser);
     saveUsers(users);
 
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         message: 'Registration successful',
         user: {
             id: newUser.id,
@@ -232,52 +232,85 @@ app.post('/api/register', (req, res) => {
 });
 
 // Social Auth - Google
-app.post('/api/auth/google', (req, res) => {
-    const { token, email, name, googleId } = req.body;
+const { OAuth2Client } = require('google-auth-library');
+const GOOGLE_CLIENT_ID = '569495896866-hnoe9pla7fma4j4lu3cn7ps5brjjiuma.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage');
 
-    if (!token || !email || !googleId) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Invalid Google authentication data' 
+app.post('/api/auth/google', async (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        return res.status(400).json({
+            success: false,
+            message: 'Authorization code is required'
         });
     }
 
-    const users = getUsers();
-    let user = users.find(u => u.socialProvider === 'google' && u.socialId === googleId);
+    try {
+        // Exchange authorization code for tokens
+        const { tokens } = await googleClient.getToken(code);
 
-    if (!user) {
-        // Yeni Google kullanıcısı oluştur -- Create a new Google user
-        user = {
-            id: users.length + 1,
-            email,
-            phone: null,
-            password: null,
-            name,
-            socialProvider: 'google',
-            socialId: googleId,
-            accountStatus: 'Active',
-            failedAttempts: 0,
-            lastLoginIP: req.ip
-        };
-        users.push(user);
-        saveUsers(users);
-    } else {
-        // Mevcut kullanıcı - son giriş IP'sini güncelle
-        // Current user - update last login IP address.
-        user.lastLoginIP = req.ip;
-        saveUsers(users);
-    }
+        // Verify the ID token
+        const ticket = await googleClient.verifyIdToken({
+            idToken: tokens.id_token,
+            audience: GOOGLE_CLIENT_ID,
+        });
 
-    res.json({ 
-        success: true, 
-        message: 'Google login successful',
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            provider: 'google'
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        const email = payload.email;
+        const name = payload.name || email;
+
+        const users = getUsers();
+        let user = users.find(u => u.socialProvider === 'google' && u.socialId === googleId);
+
+        if (!user) {
+            // Check if email already exists with a different provider
+            const existingEmailUser = users.find(u => u.email === email && u.socialProvider !== 'google');
+            if (existingEmailUser) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'An account with this email already exists. Please login with your password.'
+                });
+            }
+
+            user = {
+                id: users.length + 1,
+                email,
+                phone: null,
+                password: null,
+                name,
+                socialProvider: 'google',
+                socialId: googleId,
+                accountStatus: 'Active',
+                failedAttempts: 0,
+                lastLoginIP: req.ip
+            };
+            users.push(user);
+            saveUsers(users);
+        } else {
+            user.lastLoginIP = req.ip;
+            saveUsers(users);
         }
-    });
+
+        res.json({
+            success: true,
+            message: 'Google login successful',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                provider: 'google'
+            }
+        });
+    } catch (error) {
+        console.error('Google auth error:', error.message);
+        res.status(401).json({
+            success: false,
+            message: 'Google authentication failed. Please try again.'
+        });
+    }
 });
 
 // Social Auth - Facebook
@@ -285,9 +318,9 @@ app.post('/api/auth/facebook', (req, res) => {
     const { token, email, name, facebookId } = req.body;
 
     if (!token || !email || !facebookId) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Invalid Facebook authentication data' 
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid Facebook authentication data'
         });
     }
 
@@ -319,8 +352,8 @@ app.post('/api/auth/facebook', (req, res) => {
         saveUsers(users);
     }
 
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         message: 'Facebook login successful',
         user: {
             id: user.id,
@@ -335,11 +368,11 @@ app.post('/api/auth/facebook', (req, res) => {
 app.get('/api/user/:email', (req, res) => {
     const users = getUsers();
     const user = users.find(u => u.email === req.params.email);
-    
+
     if (!user) {
-        return res.status(404).json({ 
-            success: false, 
-            message: 'User not found' 
+        return res.status(404).json({
+            success: false,
+            message: 'User not found'
         });
     }
 
