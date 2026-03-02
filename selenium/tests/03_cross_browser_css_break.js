@@ -59,16 +59,18 @@ async function safeClick(driver, el) {
       console.log('✅ As expected: click failed due to CSS breakage');
 
       // "Self-heal": remove the CSS break effect on the element
-      await driver.executeScript(
-        `
+      await driver.executeScript(`
         const btn = document.getElementById('google-login-button');
         if (btn) {
+          // remove the intentional "break" class
+          btn.classList.remove('e2e-break-google');
+
+          // extra safety resets
           btn.style.pointerEvents = 'auto';
           btn.style.opacity = '1';
           btn.style.filter = 'none';
         }
-        `
-      );
+      `);
 
       await sleep(500);
 

@@ -8,16 +8,18 @@
     "test:scenario1": "node tests/01_dynamic_id_recovery.js",
     "test:scenario2": "node tests/02_google_popup_overlay.js",
     "test:scenario3": "node tests/03_cross_browser_css_break.js"
-    
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "chromedriver": "^145.0.6",
     "dotenv": "^17.3.1",
     "selenium-webdriver": "^4.41.0"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "description": ""
 }

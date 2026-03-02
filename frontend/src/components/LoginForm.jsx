@@ -16,7 +16,7 @@ const LoginForm = ({ onLoginSuccess }) => {
   const [attemptsLeft, setAttemptsLeft] = useState(null);
   const [riskInfo, setRiskInfo] = useState(null);
   const [pendingChallenge, setPendingChallenge] = useState(null); // holds { user, riskAssessment } while challenge is shown
-
+  const [showPopup, setShowPopup] = useState(false);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -158,7 +158,21 @@ const LoginForm = ({ onLoginSuccess }) => {
       handleGitHubCallback(code);
     }
   }, []);
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  setShowPopup(params.get('e2ePopup') === '1');
+  }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shouldBreak = params.get('breakCss') === '1';
 
+    if (shouldBreak) {
+      const btn = document.getElementById('google-login-button');
+      if (btn) {
+        btn.classList.add('e2e-break-google');
+      }
+    }
+  }, []);
   const handleGitHubLogin = () => {
     const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23lizLVhPXmTiichGS';
     const redirectUri = window.location.origin;
@@ -214,6 +228,22 @@ const LoginForm = ({ onLoginSuccess }) => {
   return (
     <div className="login-container">
       <div className="login-card">
+        {showPopup && (
+          <div className="blocking-overlay" id="blocking-overlay">
+            <div className="blocking-popup" id="blocking-popup">
+              <h3>Heads up</h3>
+              <p>This popup is blocking Google login (Scenario 2).</p>
+              <button
+                type="button"
+                id="popup-close"
+                className="popup-close-btn"
+                onClick={() => setShowPopup(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
         <div className="login-header">
           <h1>ARES Authentication</h1>
           <p>AI-Driven Resilient & Evolutionary Systems</p>

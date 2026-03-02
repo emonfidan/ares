@@ -1,14 +1,21 @@
 // selenium/utils/driver.js
+
 const { Builder } = require('selenium-webdriver');
-require('chromedriver'); // ensures chromedriver is on PATH for selenium-webdriver
+const chrome = require('selenium-webdriver/chrome');
+require('chromedriver');
 
 function buildDriver() {
-  return new Builder().forBrowser('chrome').build();
+  const options = new chrome.Options();
+
+  options.addArguments('--disable-gpu');
+  options.addArguments('--no-sandbox');
+  options.addArguments('--disable-dev-shm-usage');
+  options.addArguments('--log-level=3');
+
+  return new Builder()
+    .forBrowser('chrome')
+    .setChromeOptions(options)
+    .build();
 }
 
 module.exports = { buildDriver };
-
-options.addArguments('--disable-gpu');
-options.addArguments('--no-sandbox');
-options.addArguments('--disable-dev-shm-usage');
-options.addArguments('--log-level=3');
