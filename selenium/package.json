@@ -7,7 +7,8 @@
     "test:clean": "node tests/00_login_clean.js",
     "test:scenario1": "node tests/01_dynamic_id_recovery.js",
     "test:scenario2": "node tests/02_google_popup_overlay.js",
-    "test:scenario3": "node tests/03_cross_browser_css_break.js"
+    "test:scenario3": "node tests/03_cross_browser_css_break.js",
+    "test:scenario4": "node tests/04_social_auth_handshake.js"
   },
   "keywords": [],
   "author": "",
