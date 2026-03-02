@@ -10,6 +10,59 @@ const { OAuth2Client } = require('google-auth-library');
 const app = express();
 const PORT = 3001;
 
+// ─── Rate Limit (Brute Force / Rapid Attempts) ──────────────
+// Simple in-memory sliding window limiter.
+// Keyed by (clientIP + identifier) so one attacker can’t spam a single account endlessly.
+
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 30_000); // 30s
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 8); // 8 attempts per window
+
+// Map<key, number[]> where array holds attempt timestamps (ms)
+const rateLimitStore = new Map();
+
+function normalizeIP(ip) {
+  if (!ip) return 'unknown';
+  // Express/Node often uses these on localhost
+  if (ip === '::1') return '127.0.0.1';
+  // IPv6-mapped IPv4
+  if (ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
+  return ip;
+}
+
+function rateLimitKey(clientIP, identifier) {
+  const ip = normalizeIP(clientIP);
+  const ident = (identifier || 'unknown').toLowerCase();
+  return `${ip}::${ident}`;
+}
+
+function checkRateLimit(clientIP, identifier) {
+  const key = rateLimitKey(clientIP, identifier);
+  const now = Date.now();
+
+  const timestamps = rateLimitStore.get(key) || [];
+
+  // keep only timestamps inside window
+  const fresh = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+
+  // If already limited, do NOT add a new timestamp (don’t extend the lockout)
+  if (fresh.length >= RATE_LIMIT_MAX) {
+    const oldest = fresh[0];
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldest);
+    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+
+    // IMPORTANT: keep the filtered list (no new attempt added)
+    rateLimitStore.set(key, fresh);
+
+    return { limited: true, retryAfterSeconds };
+  }
+
+  // Not limited → record this attempt
+  fresh.push(now);
+  rateLimitStore.set(key, fresh);
+
+  return { limited: false, retryAfterSeconds: 0 };
+}
+
 // Middleware
 app.set('trust proxy', true);
 app.use(cors());
@@ -259,7 +312,21 @@ async function performRiskAssessment(user, clientIP, loginMethod, users) {
 
 app.post('/api/login', async (req, res) => {
     const { identifier, password } = req.body;
-    const clientIP = req.ip || req.connection.remoteAddress;
+    const clientIP = normalizeIP(req.ip || req.connection.remoteAddress);
+
+    // Rate limit BEFORE doing any expensive work
+    const rl = checkRateLimit(clientIP, identifier);
+
+    if (rl.limited) {
+        // Standard: 429 + Retry-After header
+        res.set('Retry-After', String(rl.retryAfterSeconds));
+        return res.status(429).json({
+            success: false,
+            message: `Too many login attempts. Please try again in ${rl.retryAfterSeconds} seconds.`,
+            rateLimited: true,
+            retryAfterSeconds: rl.retryAfterSeconds
+        });
+    }
 
     if (!identifier || !password) {
         return res.status(400).json({
@@ -798,32 +865,25 @@ app.get('/api/user/:email', (req, res) => {
 
 // ─── Admin: Reset Account ────────────────────────────────
 
+
 app.post('/api/admin/reset/:email', (req, res) => {
-    const users = getUsers();
-    const user = users.find(u => u.email === req.params.email);
+  const users = getUsers();
+  const user = users.find(u => u.email === req.params.email);
 
-    if (!user) {
-        return res.status(404).json({
-            success: false,
-            message: 'User not found'
-        });
-    }
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
 
-    user.accountStatus = 'Active';
-    user.failedAttempts = 0;
-    saveUsers(users);
+  user.accountStatus = 'Active';
+  user.failedAttempts = 0;
+  saveUsers(users);
 
-    res.json({
-        success: true,
-        message: `Account ${req.params.email} reset to Active`,
-        user: {
-            email: user.email,
-            accountStatus: user.accountStatus,
-            failedAttempts: user.failedAttempts
-        }
-    });
+  res.json({
+    success: true,
+    message: `Account ${req.params.email} reset to Active`,
+    user: { email: user.email, accountStatus: user.accountStatus, failedAttempts: user.failedAttempts }
+  });
 });
-
 // ─── Start Server ────────────────────────────────────────
 
 app.listen(PORT, () => {

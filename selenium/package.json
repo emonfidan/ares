@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "test:all": "node run_all_tests.js",
     "test:smoke": "node tests/00_smoke.js",
     "test:clean": "node tests/00_login_clean.js",
     "test:scenario1": "node tests/01_dynamic_id_recovery.js",
     "test:scenario2": "node tests/02_google_popup_overlay.js",
     "test:scenario3": "node tests/03_cross_browser_css_break.js",
-    "test:scenario4": "node tests/04_social_auth_handshake.js"
+    "test:scenario4": "node tests/04_social_auth_handshake.js",
+    "test:scenario5": "node tests/05_rate_limit_simulation.js"
   },
   "keywords": [],
   "author": "",
