@@ -17,6 +17,46 @@ const LoginForm = ({ onLoginSuccess }) => {
   const [riskInfo, setRiskInfo] = useState(null);
   const [pendingChallenge, setPendingChallenge] = useState(null); // holds { user, riskAssessment } while challenge is shown
   const [showPopup, setShowPopup] = useState(false);
+  const isE2E = new URLSearchParams(window.location.search).get('e2e') === '1';
+  const handleGoogleClick = async () => {
+    if (!isE2E) {
+      // Normal mode: real Google OAuth popup
+      return googleLogin();
+    }
+
+    // E2E mode: call backend directly (bypass Google UI)
+    setIsLoading(true);
+    setMessage({ text: '', type: '' });
+
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/google/e2e', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAttemptsLeft(null);
+        if (data.riskAssessment) setRiskInfo(data.riskAssessment);
+
+        if (data.challengeRequired) {
+          setPendingChallenge({ user: data.user, riskAssessment: data.riskAssessment });
+          setMessage({ text: 'Security challenge required — please verify below.', type: 'warning' });
+        } else {
+          setMessage({ text: `Welcome, ${data.user.name}!`, type: 'success' });
+          setTimeout(() => onLoginSuccess(data.user, data.riskAssessment), 500);
+        }
+      } else {
+        setMessage({ text: data.message || 'E2E Google login failed.', type: 'error' });
+      }
+    } catch (err) {
+      setMessage({ text: 'E2E Google login failed (network).', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -115,10 +155,16 @@ const LoginForm = ({ onLoginSuccess }) => {
       setIsLoading(true);
       setMessage({ text: '', type: '' });
       try {
-        const response = await fetch('http://localhost:3001/api/auth/google', {
+        const endpoint = isE2E
+          ? 'http://localhost:3001/api/auth/google/e2e'
+          : 'http://localhost:3001/api/auth/google';
+
+        const body = isE2E ? {} : { code: codeResponse.code };
+
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: codeResponse.code })
+          body: JSON.stringify(body)
         });
         const data = await response.json();
         if (data.success) {
@@ -413,7 +459,7 @@ const LoginForm = ({ onLoginSuccess }) => {
           <button
             className="social-button google"
             id="google-login-button"
-            onClick={() => googleLogin()}
+            onClick={handleGoogleClick}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" width="20" height="20">

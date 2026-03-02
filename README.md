@@ -25,4 +25,7 @@ $env:BROWSER="chrome"; node tests/03_cross_browser_css_break.js
 #if on linux/macOS
 BROWSER=firefox node tests/03_cross_browser_css_break.js
 BROWSER=chrome node tests/03_cross_browser_css_break.js
+
+
+node tests/04_social_auth_handshake.js
 ```

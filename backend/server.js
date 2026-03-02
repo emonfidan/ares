@@ -542,6 +542,87 @@ app.post('/api/auth/google', async (req, res) => {
         });
     }
 });
+// ─── Social Auth - Google (E2E Bypass Mode) ───────────────
+// This bypasses Google's external UI but still exercises your backend auth + risk pipeline.
+// Enable only when E2E_MODE=true in backend/.env
+app.post('/api/auth/google/e2e', async (req, res) => {
+  const clientIP = req.ip || req.connection.remoteAddress;
+
+  // Safety gate: prevent accidental use outside test mode
+  const E2E_MODE = (process.env.E2E_MODE || '').toLowerCase() === 'true';
+  if (!E2E_MODE) {
+    return res.status(403).json({
+      success: false,
+      message: 'E2E Google auth is disabled. Set E2E_MODE=true to enable.'
+    });
+  }
+
+  try {
+    const users = getUsers();
+
+    // Use a deterministic seeded social user so Selenium is stable
+    let user = users.find(u => u.socialProvider === 'google' && u.socialId === 'google_traveler_001');
+
+    if (!user) {
+      user = {
+        id: users.length + 1,
+        email: 'google.traveler@gmail.com',
+        phone: null,
+        password: null,
+        name: 'Google Traveler',
+        socialProvider: 'google',
+        socialId: 'google_traveler_001',
+        accountStatus: 'Active',
+        failedAttempts: 0,
+        lastLoginIP: clientIP,
+        loginHistory: []
+      };
+      users.push(user);
+      saveUsers(users);
+    }
+
+    // Reuse your real pipeline (risk + possible CHALLENGE/BLOCK)
+    const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'google', users);
+
+    if (llmVerdict === 'BLOCK') {
+      return res.status(403).json({
+        success: false,
+        message: 'Login blocked due to suspicious activity. Account suspended.',
+        riskLevel: riskScore.riskLevel,
+        riskScore: riskScore.score,
+        llmVerdict,
+        accountStatus: user.accountStatus
+      });
+    }
+
+    return res.json({
+      success: true,
+      challengeRequired: llmVerdict === 'CHALLENGE',
+      message: 'Google login successful (E2E mode)',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        provider: 'google',
+        accountStatus: user.accountStatus
+      },
+      riskAssessment: {
+        riskLevel: riskScore.riskLevel,
+        riskScore: riskScore.score,
+        factors: riskScore.factors,
+        llmVerdict
+      }
+    });
+  } catch (err) {
+    console.error('E2E Google auth error:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'E2E Google auth failed.'
+    });
+  }
+});
+
+
 
 // ─── Social Auth - GitHub OAuth ──────────────────────────
 
