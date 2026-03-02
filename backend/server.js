@@ -16,9 +16,11 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // ─── Config ───────────────────────────────────────────────
-const GOOGLE_CLIENT_ID = '569495896866-hnoe9pla7fma4j4lu3cn7ps5brjjiuma.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '569495896866-hnoe9pla7fma4j4lu3cn7ps5brjjiuma.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23lizLVhPXmTiichGS';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage');
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -107,10 +109,10 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '85.105.200.1', timestamp: '2026-02-27T16:00:00Z', success: true, method: 'google', riskLevel: 'LOW' }
             ]
         },
-        // Scenario 9: Facebook OAuth user, clean state — LOW risk (score 0)
+        // Scenario 9: GitHub OAuth user, clean state — LOW risk (score 0)
         {
-            id: 9, email: 'facebook@example.com', phone: null, password: null,
-            name: 'Facebook User', socialProvider: 'facebook', socialId: 'facebook_123456',
+            id: 9, email: 'github-user@example.com', phone: null, password: null,
+            name: 'GitHub User', socialProvider: 'github', socialId: 'github_123456',
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         }
     ];
@@ -541,76 +543,152 @@ app.post('/api/auth/google', async (req, res) => {
     }
 });
 
-// ─── Social Auth - Facebook (Mock/Simulated) ─────────────
+// ─── Social Auth - GitHub OAuth ──────────────────────────
 
-app.post('/api/auth/facebook', async (req, res) => {
-    const { token, email, name, facebookId } = req.body;
+app.post('/api/auth/github', async (req, res) => {
+    const { code } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
 
-    if (!token || !email || !facebookId) {
+    if (!code) {
         return res.status(400).json({
             success: false,
-            message: 'Invalid Facebook authentication data'
+            message: 'Authorization code is required'
         });
     }
 
-    const users = getUsers();
-    let user = users.find(u => u.socialProvider === 'facebook' && u.socialId === facebookId);
-
-    if (!user) {
-        // Yeni Facebook kullanıcısı oluştur
-        // Create a new Facebook user
-        user = {
-            id: users.length + 1,
-            email,
-            phone: null,
-            password: null,
-            name,
-            socialProvider: 'facebook',
-            socialId: facebookId,
-            accountStatus: 'Active',
-            failedAttempts: 0,
-            lastLoginIP: clientIP,
-            loginHistory: []
-        };
-        users.push(user);
-        saveUsers(users);
-    }
-
-    // Risk assessment — applied even for OAuth logins
-    const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'facebook', users);
-
-    if (llmVerdict === 'BLOCK') {
-        return res.status(403).json({
-            success: false,
-            message: 'Login blocked due to suspicious activity. Account suspended.',
-            riskLevel: riskScore.riskLevel,
-            riskScore: riskScore.score,
-            llmVerdict: llmVerdict,
-            accountStatus: user.accountStatus
+    try {
+        // Step 1: Exchange authorization code for access token
+        const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                client_id: GITHUB_CLIENT_ID,
+                client_secret: GITHUB_CLIENT_SECRET,
+                code
+            })
         });
-    }
 
-    res.json({
-        success: true,
-        challengeRequired: llmVerdict === 'CHALLENGE',
-        message: llmVerdict === 'CHALLENGE'
-            ? 'Security challenge required — please verify your identity'
-            : 'Facebook login successful',
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            provider: 'facebook',
-            accountStatus: user.accountStatus
-        },
-        riskAssessment: {
-            riskLevel: riskScore.riskLevel,
-            riskScore: riskScore.score,
-            factors: riskScore.factors,
-            llmVerdict: llmVerdict
+        const tokenData = await tokenResponse.json();
+
+        if (tokenData.error) {
+            console.error('GitHub token error:', tokenData.error_description);
+            return res.status(401).json({
+                success: false,
+                message: `GitHub authentication failed: ${tokenData.error_description || tokenData.error}`
+            });
         }
-    });
+
+        const accessToken = tokenData.access_token;
+
+        // Step 2: Fetch user profile from GitHub API
+        const userResponse = await fetch('https://api.github.com/user', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        const githubUser = await userResponse.json();
+
+        // Step 3: Fetch user email (may be private)
+        let email = githubUser.email;
+        if (!email) {
+            const emailResponse = await fetch('https://api.github.com/user/emails', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json'
+                }
+            });
+            const emails = await emailResponse.json();
+            const primaryEmail = emails.find(e => e.primary) || emails[0];
+            email = primaryEmail?.email;
+        }
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Could not retrieve email from GitHub. Please make sure your GitHub email is public or grant email permission.'
+            });
+        }
+
+        const githubId = String(githubUser.id);
+        const name = githubUser.name || githubUser.login;
+
+        const users = getUsers();
+        let user = users.find(u => u.socialProvider === 'github' && u.socialId === githubId);
+
+        if (!user) {
+            // Check if email already exists with a different provider
+            const existingEmailUser = users.find(u => u.email === email && u.socialProvider !== 'github');
+            if (existingEmailUser) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'An account with this email already exists. Please login with your existing method.'
+                });
+            }
+
+            // Create new GitHub user
+            user = {
+                id: users.length + 1,
+                email,
+                phone: null,
+                password: null,
+                name,
+                socialProvider: 'github',
+                socialId: githubId,
+                accountStatus: 'Active',
+                failedAttempts: 0,
+                lastLoginIP: clientIP,
+                loginHistory: []
+            };
+            users.push(user);
+            saveUsers(users);
+        }
+
+        // Risk assessment — applied even for OAuth logins
+        const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'github', users);
+
+        if (llmVerdict === 'BLOCK') {
+            return res.status(403).json({
+                success: false,
+                message: 'Login blocked due to suspicious activity. Account suspended.',
+                riskLevel: riskScore.riskLevel,
+                riskScore: riskScore.score,
+                llmVerdict: llmVerdict,
+                accountStatus: user.accountStatus
+            });
+        }
+
+        res.json({
+            success: true,
+            challengeRequired: llmVerdict === 'CHALLENGE',
+            message: llmVerdict === 'CHALLENGE'
+                ? 'Security challenge required — please verify your identity'
+                : 'GitHub login successful',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                provider: 'github',
+                accountStatus: user.accountStatus
+            },
+            riskAssessment: {
+                riskLevel: riskScore.riskLevel,
+                riskScore: riskScore.score,
+                factors: riskScore.factors,
+                llmVerdict: llmVerdict
+            }
+        });
+    } catch (error) {
+        console.error('GitHub auth error:', error.message);
+        res.status(401).json({
+            success: false,
+            message: 'GitHub authentication failed. Please try again.'
+        });
+    }
 });
 
 // ─── User Status Endpoint ────────────────────────────────

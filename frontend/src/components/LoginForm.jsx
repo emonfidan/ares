@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import './LoginForm.css';
 
@@ -148,26 +148,33 @@ const LoginForm = ({ onLoginSuccess }) => {
     flow: 'auth-code',
   });
 
-  const handleFacebookLogin = async () => {
-    setIsLoading(true);
-    setMessage({ text: '', type: '' });
+  // GitHub OAuth: detect callback code in URL after redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      // Clean the URL so the code isn't reused on refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleGitHubCallback(code);
+    }
+  }, []);
 
-    // Simüle edilmiş Facebook login
-    // Gerçek uygulamada Facebook OAuth flow kullanılır
-    const mockFacebookData = {
-      token: 'mock_facebook_token_' + Date.now(),
-      email: 'facebook.user@facebook.com',
-      name: 'Facebook User',
-      facebookId: 'facebook_' + Math.random().toString(36).substr(2, 9)
-    };
+  const handleGitHubLogin = () => {
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23lizLVhPXmTiichGS';
+    const redirectUri = window.location.origin;
+    const scope = 'read:user user:email';
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}`;
+  };
+
+  const handleGitHubCallback = async (code) => {
+    setIsLoading(true);
+    setMessage({ text: 'Completing GitHub login...', type: '' });
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/facebook', {
+      const response = await fetch('http://localhost:3001/api/auth/github', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(mockFacebookData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
       });
 
       const data = await response.json();
@@ -189,7 +196,7 @@ const LoginForm = ({ onLoginSuccess }) => {
         if (data.riskAssessment) setRiskInfo(data.riskAssessment);
       }
     } catch (error) {
-      setMessage({ text: 'Facebook login failed. Please try again.', type: 'error' });
+      setMessage({ text: 'GitHub login failed. Please try again.', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -389,15 +396,15 @@ const LoginForm = ({ onLoginSuccess }) => {
           </button>
 
           <button
-            className="social-button facebook"
-            id="facebook-login-button"
-            onClick={handleFacebookLogin}
+            className="social-button github"
+            id="github-login-button"
+            onClick={handleGitHubLogin}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" width="20" height="20">
-              <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+              <path fill="#333" d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
             </svg>
-            Continue with Facebook
+            Continue with GitHub
           </button>
         </div>
 
