@@ -246,3 +246,115 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Linked Providers ─────────────────── */
+
+.provider-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.provider-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.provider-tag[data-provider="google"] {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.provider-tag[data-provider="github"] {
+  background: #f0f0f0;
+  color: #24292f;
+}
+
+.provider-tag[data-provider="password"] {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* ─── Set Password Section ────────────── */
+
+.set-password-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.set-password-hint {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 14px 0;
+}
+
+.set-password-form {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.set-password-form input {
+  flex: 1;
+  min-width: 160px;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.set-password-form input:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+.set-password-button {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.set-password-button:hover {
+  background: #5568d3;
+}
+
+.set-password-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.password-message {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.password-message.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.password-message.error {
+  background: #fce4ec;
+  color: #c62828;
+}

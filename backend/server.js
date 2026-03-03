@@ -21,46 +21,46 @@ const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 8); // 8 attempts pe
 const rateLimitStore = new Map();
 
 function normalizeIP(ip) {
-  if (!ip) return 'unknown';
-  // Express/Node often uses these on localhost
-  if (ip === '::1') return '127.0.0.1';
-  // IPv6-mapped IPv4
-  if (ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
-  return ip;
+    if (!ip) return 'unknown';
+    // Express/Node often uses these on localhost
+    if (ip === '::1') return '127.0.0.1';
+    // IPv6-mapped IPv4
+    if (ip.startsWith('::ffff:')) return ip.replace('::ffff:', '');
+    return ip;
 }
 
 function rateLimitKey(clientIP, identifier) {
-  const ip = normalizeIP(clientIP);
-  const ident = (identifier || 'unknown').toLowerCase();
-  return `${ip}::${ident}`;
+    const ip = normalizeIP(clientIP);
+    const ident = (identifier || 'unknown').toLowerCase();
+    return `${ip}::${ident}`;
 }
 
 function checkRateLimit(clientIP, identifier) {
-  const key = rateLimitKey(clientIP, identifier);
-  const now = Date.now();
+    const key = rateLimitKey(clientIP, identifier);
+    const now = Date.now();
 
-  const timestamps = rateLimitStore.get(key) || [];
+    const timestamps = rateLimitStore.get(key) || [];
 
-  // keep only timestamps inside window
-  const fresh = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    // keep only timestamps inside window
+    const fresh = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
 
-  // If already limited, do NOT add a new timestamp (don’t extend the lockout)
-  if (fresh.length >= RATE_LIMIT_MAX) {
-    const oldest = fresh[0];
-    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldest);
-    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    // If already limited, do NOT add a new timestamp (don’t extend the lockout)
+    if (fresh.length >= RATE_LIMIT_MAX) {
+        const oldest = fresh[0];
+        const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldest);
+        const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
 
-    // IMPORTANT: keep the filtered list (no new attempt added)
+        // IMPORTANT: keep the filtered list (no new attempt added)
+        rateLimitStore.set(key, fresh);
+
+        return { limited: true, retryAfterSeconds };
+    }
+
+    // Not limited → record this attempt
+    fresh.push(now);
     rateLimitStore.set(key, fresh);
 
-    return { limited: true, retryAfterSeconds };
-  }
-
-  // Not limited → record this attempt
-  fresh.push(now);
-  rateLimitStore.set(key, fresh);
-
-  return { limited: false, retryAfterSeconds: 0 };
+    return { limited: false, retryAfterSeconds: 0 };
 }
 
 // Middleware
@@ -86,13 +86,13 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 1: Clean first-time user — LOW risk (score 0), LLM not triggered
         {
             id: 1, email: 'clean@example.com', phone: '5551234567', password: 'Password123!',
-            name: 'Clean User', socialProvider: null, socialId: null,
+            name: 'Clean User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         },
         // Scenario 2: User with 6 failed attempts — MEDIUM risk (score 30), LLM triggered
         {
             id: 2, email: 'suspicious@example.com', phone: '5559876543', password: 'Password123!',
-            name: 'Suspicious User', socialProvider: null, socialId: null,
+            name: 'Suspicious User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 6, lastLoginIP: '192.168.1.10',
             loginHistory: [
                 { ip: '192.168.1.10', timestamp: '2026-02-28T10:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
@@ -106,7 +106,7 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 3: User with established IP — MEDIUM risk (score 30) when logging from new IP
         {
             id: 3, email: 'traveler@example.com', phone: null, password: 'Password123!',
-            name: 'Traveler User', socialProvider: null, socialId: null,
+            name: 'Traveler User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '203.0.113.50',
             loginHistory: [
                 { ip: '198.51.100.1', timestamp: '2026-02-25T08:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
@@ -116,7 +116,7 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 4: Brute force target — HIGH risk (score 60+), 8 failures + new IP, LLM likely CHALLENGE/BLOCK
         {
             id: 4, email: 'bruteforce@example.com', phone: null, password: 'Password123!',
-            name: 'Bruteforce Target', socialProvider: null, socialId: null,
+            name: 'Bruteforce Target', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 8, lastLoginIP: '10.0.0.1',
             loginHistory: [
                 { ip: '10.0.0.1', timestamp: '2026-02-28T09:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
@@ -129,7 +129,7 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 5: Already Challenged account — MEDIUM risk (score 35), non-Active status +20 compounds with failures
         {
             id: 5, email: 'challenged@example.com', phone: null, password: 'Password123!',
-            name: 'Challenged User', socialProvider: null, socialId: null,
+            name: 'Challenged User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Challenged', failedAttempts: 3, lastLoginIP: '192.168.1.50',
             loginHistory: [
                 { ip: '192.168.1.50', timestamp: '2026-02-28T15:00:00Z', success: true, method: 'password', riskLevel: 'MEDIUM' },
@@ -140,21 +140,21 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 6: Locked account — blocked at login gate, cannot attempt login
         {
             id: 6, email: 'locked@example.com', phone: null, password: 'Password123!',
-            name: 'Locked User', socialProvider: null, socialId: null,
+            name: 'Locked User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Locked', failedAttempts: 10, lastLoginIP: '10.10.10.10',
             loginHistory: []
         },
         // Scenario 7: Suspended account — blocked at login gate, previously blocked by LLM
         {
             id: 7, email: 'suspended@example.com', phone: null, password: 'Password123!',
-            name: 'Suspended User', socialProvider: null, socialId: null,
+            name: 'Suspended User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Suspended', failedAttempts: 5, lastLoginIP: '192.168.100.1',
             loginHistory: []
         },
         // Scenario 8: Google OAuth user with IP history — MEDIUM risk if IP changes (only risk vector for social auth)
         {
             id: 8, email: 'google.traveler@gmail.com', phone: null, password: null,
-            name: 'Google Traveler', socialProvider: 'google', socialId: 'google_traveler_001',
+            name: 'Google Traveler', linkedProviders: [{ provider: 'google', providerId: 'google_traveler_001' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '85.105.200.1',
             loginHistory: [
                 { ip: '85.105.200.1', timestamp: '2026-02-20T10:00:00Z', success: true, method: 'google', riskLevel: 'LOW' },
@@ -165,7 +165,7 @@ if (!fs.existsSync(USERS_FILE)) {
         // Scenario 9: GitHub OAuth user, clean state — LOW risk (score 0)
         {
             id: 9, email: 'github-user@example.com', phone: null, password: null,
-            name: 'GitHub User', socialProvider: 'github', socialId: 'github_123456',
+            name: 'GitHub User', linkedProviders: [{ provider: 'github', providerId: 'github_123456' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         }
     ];
@@ -179,6 +179,21 @@ function getUsers() {
 
 function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+// ─── Provider Helpers ────────────────────────────────────
+
+function hasProvider(user, providerName) {
+    return (user.linkedProviders || []).some(p => p.provider === providerName);
+}
+
+function addProvider(user, providerName, providerId) {
+    if (!user.linkedProviders) user.linkedProviders = [];
+    if (!hasProvider(user, providerName)) {
+        const entry = { provider: providerName };
+        if (providerId) entry.providerId = providerId;
+        user.linkedProviders.push(entry);
+    }
 }
 
 // ─── Risk Assessment Engine ──────────────────────────────
@@ -337,13 +352,26 @@ app.post('/api/login', async (req, res) => {
 
     const users = getUsers();
     const user = users.find(u =>
-        (u.email === identifier || u.phone === identifier) && u.password
+        u.email === identifier || u.phone === identifier
     );
 
     if (!user) {
         return res.status(401).json({
             success: false,
             message: 'Invalid credentials'
+        });
+    }
+
+    // Check if user has password login enabled
+    if (!hasProvider(user, 'password') || !user.password) {
+        const providers = (user.linkedProviders || [])
+            .map(p => p.provider)
+            .filter(p => p !== 'password');
+        return res.status(403).json({
+            success: false,
+            message: `This account uses ${providers.join('/')} login. Please register a password or use your social login.`,
+            requiresPasswordSetup: true,
+            availableProviders: providers
         });
     }
 
@@ -418,7 +446,8 @@ app.post('/api/login', async (req, res) => {
             id: user.id,
             email: user.email,
             name: user.name,
-            accountStatus: user.accountStatus
+            accountStatus: user.accountStatus,
+            linkedProviders: user.linkedProviders || []
         },
         riskAssessment: {
             riskLevel: riskScore.riskLevel,
@@ -471,24 +500,43 @@ app.post('/api/register', (req, res) => {
 
     const users = getUsers();
 
-    // Email zaten kayıtlı mı kontrol et - // Check if the email is already registered.
-    if (users.find(u => u.email === email)) {
-        return res.status(409).json({
-            success: false,
-            message: 'Email already registered'
-        });
+    // Check if email already exists
+    const existingUser = users.find(u => u.email === email);
 
+    if (existingUser) {
+        if (hasProvider(existingUser, 'password')) {
+            return res.status(409).json({
+                success: false,
+                message: 'Email already registered'
+            });
+        }
+
+        // Add password to existing OAuth account
+        existingUser.password = password;
+        if (!existingUser.name || existingUser.name === email) existingUser.name = name;
+        addProvider(existingUser, 'password');
+        saveUsers(users);
+
+        return res.json({
+            success: true,
+            message: 'Password added to your existing account. You can now login with your password.',
+            user: {
+                id: existingUser.id,
+                email: existingUser.email,
+                name: existingUser.name,
+                linkedProviders: existingUser.linkedProviders || []
+            }
+        });
     }
 
-    // Yeni kullanıcı oluştur - Create new user 
+    // Create new user
     const newUser = {
         id: users.length + 1,
         email,
         phone: phone || null,
         password,
         name,
-        socialProvider: null,
-        socialId: null,
+        linkedProviders: [{ provider: 'password' }],
         accountStatus: 'Active',
         failedAttempts: 0,
         lastLoginIP: null,
@@ -504,7 +552,8 @@ app.post('/api/register', (req, res) => {
         user: {
             id: newUser.id,
             email: newUser.email,
-            name: newUser.name
+            name: newUser.name,
+            linkedProviders: newUser.linkedProviders
         }
     });
 });
@@ -538,33 +587,35 @@ app.post('/api/auth/google', async (req, res) => {
         const name = payload.name || email;
 
         const users = getUsers();
-        let user = users.find(u => u.socialProvider === 'google' && u.socialId === googleId);
+        let user = users.find(u =>
+            (u.linkedProviders || []).some(p => p.provider === 'google' && p.providerId === googleId)
+        );
 
         if (!user) {
-            // Check if email already exists with a different provider
-            const existingEmailUser = users.find(u => u.email === email && u.socialProvider !== 'google');
-            if (existingEmailUser) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'An account with this email already exists. Please login with your password.'
-                });
+            // Try to find by email for auto-linking
+            const existingUser = users.find(u => u.email === email);
+            if (existingUser) {
+                // Auto-link Google to existing account
+                addProvider(existingUser, 'google', googleId);
+                saveUsers(users);
+                user = existingUser;
+            } else {
+                // Create new user
+                user = {
+                    id: users.length + 1,
+                    email,
+                    phone: null,
+                    password: null,
+                    name,
+                    linkedProviders: [{ provider: 'google', providerId: googleId }],
+                    accountStatus: 'Active',
+                    failedAttempts: 0,
+                    lastLoginIP: clientIP,
+                    loginHistory: []
+                };
+                users.push(user);
+                saveUsers(users);
             }
-
-            user = {
-                id: users.length + 1,
-                email,
-                phone: null,
-                password: null,
-                name,
-                socialProvider: 'google',
-                socialId: googleId,
-                accountStatus: 'Active',
-                failedAttempts: 0,
-                lastLoginIP: clientIP,
-                loginHistory: []
-            };
-            users.push(user);
-            saveUsers(users);
         }
 
         // Risk assessment — applied even for OAuth logins
@@ -592,7 +643,8 @@ app.post('/api/auth/google', async (req, res) => {
                 email: user.email,
                 name: user.name,
                 provider: 'google',
-                accountStatus: user.accountStatus
+                accountStatus: user.accountStatus,
+                linkedProviders: user.linkedProviders || []
             },
             riskAssessment: {
                 riskLevel: riskScore.riskLevel,
@@ -613,80 +665,90 @@ app.post('/api/auth/google', async (req, res) => {
 // This bypasses Google's external UI but still exercises your backend auth + risk pipeline.
 // Enable only when E2E_MODE=true in backend/.env
 app.post('/api/auth/google/e2e', async (req, res) => {
-  const clientIP = req.ip || req.connection.remoteAddress;
+    const clientIP = req.ip || req.connection.remoteAddress;
 
-  // Safety gate: prevent accidental use outside test mode
-  const E2E_MODE = (process.env.E2E_MODE || '').toLowerCase() === 'true';
-  if (!E2E_MODE) {
-    return res.status(403).json({
-      success: false,
-      message: 'E2E Google auth is disabled. Set E2E_MODE=true to enable.'
-    });
-  }
-
-  try {
-    const users = getUsers();
-
-    // Use a deterministic seeded social user so Selenium is stable
-    let user = users.find(u => u.socialProvider === 'google' && u.socialId === 'google_traveler_001');
-
-    if (!user) {
-      user = {
-        id: users.length + 1,
-        email: 'google.traveler@gmail.com',
-        phone: null,
-        password: null,
-        name: 'Google Traveler',
-        socialProvider: 'google',
-        socialId: 'google_traveler_001',
-        accountStatus: 'Active',
-        failedAttempts: 0,
-        lastLoginIP: clientIP,
-        loginHistory: []
-      };
-      users.push(user);
-      saveUsers(users);
+    // Safety gate: prevent accidental use outside test mode
+    const E2E_MODE = (process.env.E2E_MODE || '').toLowerCase() === 'true';
+    if (!E2E_MODE) {
+        return res.status(403).json({
+            success: false,
+            message: 'E2E Google auth is disabled. Set E2E_MODE=true to enable.'
+        });
     }
 
-    // Reuse your real pipeline (risk + possible CHALLENGE/BLOCK)
-    const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'google', users);
+    try {
+        const users = getUsers();
 
-    if (llmVerdict === 'BLOCK') {
-      return res.status(403).json({
-        success: false,
-        message: 'Login blocked due to suspicious activity. Account suspended.',
-        riskLevel: riskScore.riskLevel,
-        riskScore: riskScore.score,
-        llmVerdict,
-        accountStatus: user.accountStatus
-      });
+        // Use a deterministic seeded social user so Selenium is stable
+        let user = users.find(u =>
+            (u.linkedProviders || []).some(p => p.provider === 'google' && p.providerId === 'google_traveler_001')
+        );
+
+        if (!user) {
+            const e2eEmail = 'google.traveler@gmail.com';
+            const existingUser = users.find(u => u.email === e2eEmail);
+            if (existingUser) {
+                addProvider(existingUser, 'google', 'google_traveler_001');
+                saveUsers(users);
+                user = existingUser;
+            } else {
+                user = {
+                    id: users.length + 1,
+                    email: e2eEmail,
+                    phone: null,
+                    password: null,
+                    name: 'Google Traveler',
+                    linkedProviders: [{ provider: 'google', providerId: 'google_traveler_001' }],
+                    accountStatus: 'Active',
+                    failedAttempts: 0,
+                    lastLoginIP: clientIP,
+                    loginHistory: []
+                };
+                users.push(user);
+                saveUsers(users);
+            }
+        }
+
+        // Reuse your real pipeline (risk + possible CHALLENGE/BLOCK)
+        const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'google', users);
+
+        if (llmVerdict === 'BLOCK') {
+            return res.status(403).json({
+                success: false,
+                message: 'Login blocked due to suspicious activity. Account suspended.',
+                riskLevel: riskScore.riskLevel,
+                riskScore: riskScore.score,
+                llmVerdict,
+                accountStatus: user.accountStatus
+            });
+        }
+
+        return res.json({
+            success: true,
+            challengeRequired: llmVerdict === 'CHALLENGE',
+            message: 'Google login successful (E2E mode)',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                provider: 'google',
+                accountStatus: user.accountStatus,
+                linkedProviders: user.linkedProviders || []
+            },
+            riskAssessment: {
+                riskLevel: riskScore.riskLevel,
+                riskScore: riskScore.score,
+                factors: riskScore.factors,
+                llmVerdict
+            }
+        });
+    } catch (err) {
+        console.error('E2E Google auth error:', err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'E2E Google auth failed.'
+        });
     }
-
-    return res.json({
-      success: true,
-      challengeRequired: llmVerdict === 'CHALLENGE',
-      message: 'Google login successful (E2E mode)',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        provider: 'google',
-        accountStatus: user.accountStatus
-      },
-      riskAssessment: {
-        riskLevel: riskScore.riskLevel,
-        riskScore: riskScore.score,
-        factors: riskScore.factors,
-        llmVerdict
-      }
-    });
-  } catch (err) {
-    console.error('E2E Google auth error:', err.message);
-    return res.status(500).json({
-      success: false,
-      message: 'E2E Google auth failed.'
-    });
-  }
 });
 
 
@@ -766,34 +828,35 @@ app.post('/api/auth/github', async (req, res) => {
         const name = githubUser.name || githubUser.login;
 
         const users = getUsers();
-        let user = users.find(u => u.socialProvider === 'github' && u.socialId === githubId);
+        let user = users.find(u =>
+            (u.linkedProviders || []).some(p => p.provider === 'github' && p.providerId === githubId)
+        );
 
         if (!user) {
-            // Check if email already exists with a different provider
-            const existingEmailUser = users.find(u => u.email === email && u.socialProvider !== 'github');
-            if (existingEmailUser) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'An account with this email already exists. Please login with your existing method.'
-                });
+            // Try to find by email for auto-linking
+            const existingUser = users.find(u => u.email === email);
+            if (existingUser) {
+                // Auto-link GitHub to existing account
+                addProvider(existingUser, 'github', githubId);
+                saveUsers(users);
+                user = existingUser;
+            } else {
+                // Create new GitHub user
+                user = {
+                    id: users.length + 1,
+                    email,
+                    phone: null,
+                    password: null,
+                    name,
+                    linkedProviders: [{ provider: 'github', providerId: githubId }],
+                    accountStatus: 'Active',
+                    failedAttempts: 0,
+                    lastLoginIP: clientIP,
+                    loginHistory: []
+                };
+                users.push(user);
+                saveUsers(users);
             }
-
-            // Create new GitHub user
-            user = {
-                id: users.length + 1,
-                email,
-                phone: null,
-                password: null,
-                name,
-                socialProvider: 'github',
-                socialId: githubId,
-                accountStatus: 'Active',
-                failedAttempts: 0,
-                lastLoginIP: clientIP,
-                loginHistory: []
-            };
-            users.push(user);
-            saveUsers(users);
         }
 
         // Risk assessment — applied even for OAuth logins
@@ -821,7 +884,8 @@ app.post('/api/auth/github', async (req, res) => {
                 email: user.email,
                 name: user.name,
                 provider: 'github',
-                accountStatus: user.accountStatus
+                accountStatus: user.accountStatus,
+                linkedProviders: user.linkedProviders || []
             },
             riskAssessment: {
                 riskLevel: riskScore.riskLevel,
@@ -858,7 +922,8 @@ app.get('/api/user/:email', (req, res) => {
             email: user.email,
             accountStatus: user.accountStatus,
             failedAttempts: user.failedAttempts,
-            loginHistory: user.loginHistory || []
+            loginHistory: user.loginHistory || [],
+            linkedProviders: user.linkedProviders || []
         }
     });
 });
@@ -867,23 +932,70 @@ app.get('/api/user/:email', (req, res) => {
 
 
 app.post('/api/admin/reset/:email', (req, res) => {
-  const users = getUsers();
-  const user = users.find(u => u.email === req.params.email);
+    const users = getUsers();
+    const user = users.find(u => u.email === req.params.email);
 
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
-  user.accountStatus = 'Active';
-  user.failedAttempts = 0;
-  saveUsers(users);
+    user.accountStatus = 'Active';
+    user.failedAttempts = 0;
+    saveUsers(users);
 
-  res.json({
-    success: true,
-    message: `Account ${req.params.email} reset to Active`,
-    user: { email: user.email, accountStatus: user.accountStatus, failedAttempts: user.failedAttempts }
-  });
+    res.json({
+        success: true,
+        message: `Account ${req.params.email} reset to Active`,
+        user: { email: user.email, accountStatus: user.accountStatus, failedAttempts: user.failedAttempts }
+    });
 });
+// ─── Set Password (for OAuth users) ──────────────────────
+
+app.post('/api/user/set-password', (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Email and password are required'
+        });
+    }
+
+    if (!isStrongPassword(password)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must contain uppercase, symbol, and be 8+ characters'
+        });
+    }
+
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        return res.status(404).json({
+            success: false,
+            message: 'User not found'
+        });
+    }
+
+    if (hasProvider(user, 'password')) {
+        return res.status(409).json({
+            success: false,
+            message: 'Password login is already set up for this account'
+        });
+    }
+
+    user.password = password;
+    addProvider(user, 'password');
+    saveUsers(users);
+
+    res.json({
+        success: true,
+        message: 'Password set successfully. You can now login with your password.',
+        linkedProviders: user.linkedProviders
+    });
+});
+
 // ─── Start Server ────────────────────────────────────────
 
 app.listen(PORT, () => {
