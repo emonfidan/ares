@@ -26,3 +26,8 @@ build/
 # Testing
 coverage/
 .nyc_output/
+
+# Selenium runtime artifacts
+selenium/logs/
+selenium/logs/*.jsonl
+selenium/logs/*.html
