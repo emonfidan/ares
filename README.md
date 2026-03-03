@@ -1,14 +1,14 @@
 # Terminal 1
-cd backend /n
-npm install /n
-npm run dev /n
+cd backend /b
+npm install /b
+npm run dev /b
 
 # Terminal 2
-cd frontend /n
-npm install /n
-npm run dev /n
+cd frontend /b
+npm install /b
+npm run dev /b
 
 # Terminal 3
-cd selenium /n
-npm install /n
-npm run test:all /n
+cd selenium /b
+npm install /b
+npm run test:all /b
