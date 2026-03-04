@@ -1,6 +1,16 @@
+import { useState } from 'react';
 import './Dashboard.css';
 
+const API_BASE = 'http://localhost:3001';
+
 const Dashboard = ({ user, riskAssessment, onLogout }) => {
+  const [providers, setProviders] = useState(user.linkedProviders || []);
+  const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' });
+  const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+
+  const hasPassword = providers.some(p => p.provider === 'password');
+
   const getRiskColorClass = (level) => {
     if (!level) return '';
     switch (level) {
@@ -8,6 +18,50 @@ const Dashboard = ({ user, riskAssessment, onLogout }) => {
       case 'MEDIUM': return 'status-challenged';
       case 'HIGH': return 'status-locked';
       default: return '';
+    }
+  };
+
+  const providerLabel = (name) => {
+    switch (name) {
+      case 'password': return '🔑 Password';
+      case 'google': return '🔵 Google';
+      case 'github': return '⚫ GitHub';
+      default: return name;
+    }
+  };
+
+  const handleSetPassword = async (e) => {
+    e.preventDefault();
+    if (isSettingPassword) return;
+
+    if (passwordForm.password !== passwordForm.confirm) {
+      setPasswordMsg({ text: 'Passwords do not match.', type: 'error' });
+      return;
+    }
+
+    setIsSettingPassword(true);
+    setPasswordMsg({ text: '', type: '' });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/user/set-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, password: passwordForm.password })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (data.success) {
+        setPasswordMsg({ text: 'Password set successfully!', type: 'success' });
+        setProviders(data.linkedProviders || [...providers, { provider: 'password' }]);
+        setPasswordForm({ password: '', confirm: '' });
+      } else {
+        setPasswordMsg({ text: data.message || 'Failed to set password.', type: 'error' });
+      }
+    } catch (err) {
+      setPasswordMsg({ text: 'Connection error. Please try again.', type: 'error' });
+    } finally {
+      setIsSettingPassword(false);
     }
   };
 
@@ -31,6 +85,57 @@ const Dashboard = ({ user, riskAssessment, onLogout }) => {
             <p className="provider-badge">
               Logged in with {user.provider}
             </p>
+          )}
+        </div>
+
+        {/* Linked Login Methods */}
+        <div className="info-box" id="linked-providers-section">
+          <h3>Linked Login Methods</h3>
+          <div className="provider-tags">
+            {providers.map((p, i) => (
+              <span key={i} className="provider-tag" data-provider={p.provider}>
+                {providerLabel(p.provider)}
+              </span>
+            ))}
+          </div>
+
+          {!hasPassword && (
+            <div className="set-password-section" id="set-password-section">
+              <p className="set-password-hint">
+                Add a password to also log in with email + password.
+              </p>
+              {passwordMsg.text && (
+                <div className={`password-message ${passwordMsg.type}`} id="set-password-message">
+                  {passwordMsg.text}
+                </div>
+              )}
+              <form onSubmit={handleSetPassword} className="set-password-form">
+                <input
+                  type="password"
+                  id="set-password-input"
+                  placeholder="New password"
+                  value={passwordForm.password}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                />
+                <input
+                  type="password"
+                  id="set-password-confirm"
+                  placeholder="Confirm password"
+                  value={passwordForm.confirm}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm: e.target.value }))}
+                  required
+                />
+                <button
+                  type="submit"
+                  className="set-password-button"
+                  id="set-password-button"
+                  disabled={isSettingPassword}
+                >
+                  {isSettingPassword ? 'Setting...' : 'Set Password'}
+                </button>
+              </form>
+            </div>
           )}
         </div>
 

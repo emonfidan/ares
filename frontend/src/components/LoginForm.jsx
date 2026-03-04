@@ -33,22 +33,22 @@ const LoginForm = ({ onLoginSuccess }) => {
   const isE2E = new URLSearchParams(window.location.search).get('e2e') === '1';
 
   // ✅ FIX: Make countdown "tick" and automatically clear when time is up
-useEffect(() => {
-  if (!rateLimitUntil) return;
+  useEffect(() => {
+    if (!rateLimitUntil) return;
 
-  const t = setInterval(() => {
-    setNow(Date.now());
-  }, 250);
+    const t = setInterval(() => {
+      setNow(Date.now());
+    }, 250);
 
-  return () => clearInterval(t);
-}, [rateLimitUntil]);
+    return () => clearInterval(t);
+  }, [rateLimitUntil]);
 
-// When time passes the deadline, clear the lock once
-useEffect(() => {
-  if (rateLimitUntil && now >= rateLimitUntil) {
-    setRateLimitUntil(null);
-  }
-}, [now, rateLimitUntil]);
+  // When time passes the deadline, clear the lock once
+  useEffect(() => {
+    if (rateLimitUntil && now >= rateLimitUntil) {
+      setRateLimitUntil(null);
+    }
+  }, [now, rateLimitUntil]);
 
   // GitHub OAuth callback handler (code in URL)
   useEffect(() => {
@@ -133,6 +133,15 @@ useEffect(() => {
         const until = Date.now() + Number(data.retryAfterSeconds) * 1000;
         setRateLimitUntil(until);
         setMessage({ text: data.message || 'Too many login attempts. Please try again later.', type: 'error' });
+        return;
+      }
+
+      // OAuth-only user tried password login
+      if (data.requiresPasswordSetup) {
+        setMessage({
+          text: data.message || 'This account uses social login. Please register a password or use your social login.',
+          type: 'error'
+        });
         return;
       }
 
