@@ -391,32 +391,49 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Password check
-    if (user.password !== password) {
-        user.failedAttempts = (user.failedAttempts || 0) + 1;
+if (user.password !== password) {
+  user.failedAttempts = (user.failedAttempts || 0) + 1;
 
-        // Record failed attempt in history
-        if (!user.loginHistory) user.loginHistory = [];
-        user.loginHistory.push({
-            ip: clientIP,
-            timestamp: new Date().toISOString(),
-            success: false,
-            method: 'password',
-            riskLevel: null
-        });
-        if (user.loginHistory.length > 10) {
-            user.loginHistory = user.loginHistory.slice(-10);
-        }
+  // Brute-force thresholds
+  if (user.failedAttempts >= 10) {
+    user.accountStatus = 'Locked';
+  } else if (user.failedAttempts >= 5) {
+    user.accountStatus = 'Challenged';
+  }
 
-        saveUsers(users);
+  // Record failed attempt in history
+  if (!user.loginHistory) user.loginHistory = [];
+  user.loginHistory.push({
+    ip: clientIP,
+    timestamp: new Date().toISOString(),
+    success: false,
+    method: 'password',
+    riskLevel: null
+  });
 
-        return res.status(401).json({
-            success: false,
-            message: 'Invalid credentials',
-            remainingAttempts: Math.max(0, 10 - user.failedAttempts),
-            accountStatus: user.accountStatus
-        });
-    }
+  if (user.loginHistory.length > 10) {
+    user.loginHistory = user.loginHistory.slice(-10);
+  }
 
+  saveUsers(users);
+
+  // If locked, return 403 (matches your report expectation)
+  if (user.accountStatus === 'Locked') {
+    return res.status(403).json({
+      success: false,
+      message: 'Account is locked due to too many failed attempts.',
+      remainingAttempts: 0,
+      accountStatus: user.accountStatus
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Invalid credentials',
+    remainingAttempts: Math.max(0, 10 - user.failedAttempts),
+    accountStatus: user.accountStatus
+  });
+}
     // Password correct — perform risk assessment
     const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'password', users);
 
