@@ -40,4 +40,44 @@ Answer:
   return 'CONTINUE';
 }
 
-module.exports = { decideOverlayAction };
+/**
+ * Ask Gemini to propose a selector (CSS or XPath) for an element, using the DOM.
+ * Returns a string in one of these formats:
+ *   CSS: <selector>
+ *   XPATH: <xpath>
+ */
+async function suggestSelector({ domHtml = '', goal = '', oldLocator = '' }) {
+  const genAI = getGemini();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+
+  // Keep prompt small and stable
+  const snippet = String(domHtml).slice(0, 14000);
+
+  const prompt = `
+You are a Selenium locator generator.
+
+Task: Return ONE selector that matches the target element.
+
+Target description (intent/goal): ${goal}
+Old locator that FAILED: ${oldLocator}
+
+DOM snippet (may be truncated):
+${snippet}
+
+STRICT RULES:
+- Output MUST be exactly ONE line.
+- Output MUST start with EXACTLY one of:
+  CSS: <selector>
+  XPATH: <xpath>
+- No explanations, no markdown, no quotes, no extra lines.
+- Choose a selector that is likely stable (id/data-testid > role/text > structure).
+- Do NOT invent elements that aren't in the DOM snippet.
+
+Answer:
+`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
+
+module.exports = { decideOverlayAction, suggestSelector };
