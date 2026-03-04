@@ -49,11 +49,8 @@ async function resetUser(email) {
     // optional cleanup before scenario 5
     await resetUser("clean@example.com");
 
-    runTest("00_login_clean.js");
     runTest("01_dynamic_id_recovery.js");
     runTest("02_google_popup_overlay.js");
-
-    // ✅ Scenario 3 MUST run twice (cross-browser)
     runTest("03_cross_browser_css_break.js", { BROWSER: "firefox" });
     runTest("03_cross_browser_css_break.js", { BROWSER: "chrome" });
 

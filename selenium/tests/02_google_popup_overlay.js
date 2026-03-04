@@ -1,5 +1,5 @@
 // selenium/tests/03_google_popup_overlay.js
-// Scenario 2: Popup/overlay blocks Google login
+// TEST 2: Popup/overlay blocks Google login
 // popup appears -> LLM decides -> if CLOSE_POPUP then close -> continue
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
@@ -15,7 +15,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const WAIT_MS = 15000;
 
 (async function googlePopupOverlay() {
-  console.log('▶ 03 SCENARIO 2 (Google Popup Overlay): starting...');
+  console.log('▶ TEST 2 (Google Popup Overlay): starting...');
   const driver = buildDriver();
 
   try {
@@ -55,7 +55,7 @@ const WAIT_MS = 15000;
         goal: 'Proceed to click the Google login button'
       });
 
-      console.log('🤖 LLM decision:', decision);
+      console.log('LLM decision:', decision);
 
       if (decision === 'CLOSE_POPUP') {
         const { element: closeBtn } = await findWithHealing(
@@ -70,7 +70,7 @@ const WAIT_MS = 15000;
         );
 
         await closeBtn.click();
-        console.log('✅ Clicked popup close button');
+        console.log('Clicked popup close button');
 
         await sleep(2000);
 
@@ -80,9 +80,9 @@ const WAIT_MS = 15000;
           return els.length === 0;
         }, WAIT_MS);
 
-        console.log('✅ Overlay closed (no longer blocking)');
+        console.log('Overlay closed (no longer blocking)');
       } else {
-        console.log('ℹ️ LLM chose CONTINUE (did not close popup)');
+        console.log(' LLM chose CONTINUE (did not close popup)');
       }
     }
 
@@ -99,17 +99,17 @@ const WAIT_MS = 15000;
     );
 
     await googleBtn.click();
-    console.log('✅ Clicked Google login button');
+    console.log('Clicked Google login button');
 
     await sleep(3000);
 
-    console.log('✅ 03 SCENARIO 2 PASS: LLM decision + popup handling + Google click attempted');
+    console.log('TEST 2 PASS: LLM decision + popup handling + Google click attempted');
   } catch (err) {
-    console.error('❌ 03 SCENARIO 2 FAIL:', err.message);
+    console.error('TEST 2 FAIL:', err.message);
     process.exitCode = 1;
   } finally {
     await sleep(2000);
     await driver.quit();
-    console.log('▶ 03 SCENARIO 2: finished');
+    console.log('▶ TEST 2: finished');
   }
 })();
