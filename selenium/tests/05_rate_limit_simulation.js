@@ -151,6 +151,13 @@ async function resetAccount(email) {
     }
 
     console.log('TEST 05 PASSED.');
+
+  // Clean up: reset account so TC-05 leaves the system in a fresh state
+  console.log('↺ Post-test cleanup reset...');
+  await resetAccount(EMAIL);
+
+const cleaned = await getBackendStatus(EMAIL);
+console.log(`Backend after cleanup: ${cleaned.accountStatus}, failedAttempts=${cleaned.failedAttempts}`);
   } catch (err) {
     console.error('TEST 05 FAILED:', err.message);
     throw err;
