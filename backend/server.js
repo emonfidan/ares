@@ -366,6 +366,12 @@ app.post('/api/login', async (req, res) => {
     if (user.password !== password) {
         user.failedAttempts = (user.failedAttempts || 0) + 1;
 
+    if (user.failedAttempts >= 10) {
+        user.accountStatus = 'Locked';
+    } else if (user.failedAttempts >= 5) {
+        user.accountStatus = 'Challenged';
+    }
+
         // Record failed attempt in history
         if (!user.loginHistory) user.loginHistory = [];
         user.loginHistory.push({
@@ -380,6 +386,15 @@ app.post('/api/login', async (req, res) => {
         }
 
         saveUsers(users);
+
+        if (user.accountStatus === 'Locked') {
+            return res.status(403).json({
+            success: false,
+            message: 'Account is locked due to too many failed attempts.',
+            remainingAttempts: 0,
+            accountStatus: user.accountStatus
+            });
+        }
 
         return res.status(401).json({
             success: false,
