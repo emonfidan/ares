@@ -117,13 +117,13 @@ JSON response:`;
     // Validate action field
     const validActions = ['REPAIR_SELECTOR', 'FIX_CSS', 'CLOSE_OVERLAY', 'JS_CLICK', 'NONE'];
     if (!parsed.action || !validActions.includes(parsed.action)) {
-      console.log('   🤖 LLM returned invalid action, defaulting to NONE');
+      console.log(' LLM returned invalid action, defaulting to NONE');
       return { action: 'NONE' };
     }
 
     return parsed;
   } catch (error) {
-    console.error(`   🤖 LLM heal error: ${error.message}`);
+    console.error(` LLM heal error: ${error.message}`);
     return { action: 'NONE' };
   }
 }
