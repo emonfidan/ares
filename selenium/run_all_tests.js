@@ -37,10 +37,10 @@ async function resetUser(email) {
     }
 
     const data = await res.json().catch(() => ({}));
-    console.log("✅ Reset OK:", data.message || `${email} reset`);
+    console.log("Reset OK:", data.message || `${email} reset`);
   } catch (e) {
     // Don’t hard-fail the entire suite if reset endpoint isn’t reachable
-    console.log("⚠️ Reset skipped/failed:", e.message);
+    console.log("Reset skipped/failed:", e.message);
   }
 }
 
@@ -57,10 +57,10 @@ async function resetUser(email) {
     runTest("04_social_auth_handshake.js");
     runTest("05_rate_limit_simulation.js");
 
-    console.log("\n✅ ALL TESTS PASSED SUCCESSFULLY ✅\n");
+    console.log("\nALL TESTS PASSED SUCCESSFULLY\n");
     process.exit(0);
   } catch (err) {
-    console.error("\n❌ TEST SUITE FAILED:", err.message);
+    console.error("\nTEST SUITE FAILED:", err.message);
     process.exit(1);
   }
 })();
