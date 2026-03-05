@@ -236,16 +236,16 @@ async function heuristicFindElement(driver, intent, threshold = 50) {
 
     const best = scored[0];
     if (best.score < threshold) {
-      console.log(`   🔢 Heuristic best "${best.selector}" scored ${best.score} (below threshold ${threshold})`);
+      console.log(`   Heuristic best "${best.selector}" scored ${best.score} (below threshold ${threshold})`);
       return null;
     }
 
-    console.log(`   🔢 Heuristic match: "${best.selector}" (score=${best.score}${historical ? ', used historical metadata' : ''})`);
+    console.log(`   Heuristic match: "${best.selector}" (score=${best.score}${historical ? ', used historical metadata' : ''})`);
     const locator = By.css(best.selector);
     const el = await driver.findElement(locator);
     return { element: el, selector: best.selector, score: best.score };
   } catch (e) {
-    console.log(`   🔢 Heuristic scoring error: ${e.message}`);
+    console.log(`   Heuristic scoring error: ${e.message}`);
     return null;
   }
 }
@@ -283,7 +283,7 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
     return { element: el, used: primary, healed: false, llmRepaired: false };
   } catch (e1) {
     const { filePath: domFile, html: fullHtml } = await saveDomSnapshot(driver, `heal_${intent}`);
-    console.log(`🩹 Healing triggered (${intent}). DOM saved: ${domFile}`);
+    console.log(` Healing triggered (${intent}). DOM saved: ${domFile}`);
     console.log(`   Failed locator: ${oldLocator}`);
 
     // 2) Hardcoded fallbacks
@@ -292,7 +292,7 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
       try {
         await driver.wait(until.elementLocated(fb), waitMs);
         const el = await driver.findElement(fb);
-        console.log(`✅ Healed using fallback: ${fbStr}`);
+        console.log(` Healed using fallback: ${fbStr}`);
 
         appendHealLog({
           ts: new Date().toISOString(), intent, oldLocator, newLocator: fbStr,
@@ -306,10 +306,10 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
     // 2.5) Heuristic scoring — faster than LLM, no API call
     //      Skip if caller explicitly wants LLM to handle it (e.g. TC-01)
     if (!skipHeuristic) {
-      console.log('🔢 Trying heuristic scoring...');
+      console.log(' Trying heuristic scoring...');
       const heuristicResult = await heuristicFindElement(driver, intent);
       if (heuristicResult) {
-        console.log(`✅ Heuristic repair successful! Selector: "${heuristicResult.selector}"`);
+        console.log(` Heuristic repair successful! Selector: "${heuristicResult.selector}"`);
         appendHealLog({
           ts: new Date().toISOString(), intent, oldLocator,
           newLocator: heuristicResult.selector, success: true, healed: true,
@@ -319,11 +319,11 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
         return { element: heuristicResult.element, used: By.css(heuristicResult.selector), healed: true, llmRepaired: false };
       }
     } else {
-      console.log('🔢 Heuristic scoring skipped (skipHeuristic=true) — going straight to LLM.');
+      console.log(' Heuristic scoring skipped (skipHeuristic=true) — going straight to LLM.');
     }
 
     // 3) Unified LLM heal agent
-    console.log('🤖 All fallbacks + heuristic failed. Invoking LLM heal agent...');
+    console.log(' All fallbacks + heuristic failed. Invoking LLM heal agent...');
 
     try {
       const domSnippet = extractDomSnippet(fullHtml);
@@ -335,13 +335,13 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
       });
 
       if (decision.action === 'REPAIR_SELECTOR' && decision.cssSelector) {
-        console.log(`🤖 LLM action: REPAIR_SELECTOR → "${decision.cssSelector}"`);
+        console.log(` LLM action: REPAIR_SELECTOR → "${decision.cssSelector}"`);
         const llmLocator = By.css(decision.cssSelector);
 
         try {
           await driver.wait(until.elementLocated(llmLocator), waitMs);
           const el = await driver.findElement(llmLocator);
-          console.log(`✅ LLM repair successful!`);
+          console.log(` LLM repair successful!`);
 
           appendHealLog({
             ts: new Date().toISOString(), intent, oldLocator,
@@ -351,11 +351,11 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
 
           return { element: el, used: llmLocator, healed: true, llmRepaired: true };
         } catch (_) {
-          console.log(`❌ LLM-suggested selector didn't work: ${decision.cssSelector}`);
+          console.log(` LLM-suggested selector didn't work: ${decision.cssSelector}`);
         }
       } else if (decision.action === 'CLOSE_OVERLAY' && decision.cssSelector) {
         // LLM detected an overlay blocking the element — try to close it
-        console.log(`🤖 LLM action: CLOSE_OVERLAY → clicking "${decision.cssSelector}"`);
+        console.log(` LLM action: CLOSE_OVERLAY → clicking "${decision.cssSelector}"`);
         try {
           const closeBtn = await driver.findElement(By.css(decision.cssSelector));
           await closeBtn.click();
@@ -363,7 +363,7 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
           await new Promise(r => setTimeout(r, 1000));
           await driver.wait(until.elementLocated(primary), waitMs);
           const el = await driver.findElement(primary);
-          console.log(`✅ LLM closed overlay, element found!`);
+          console.log(` LLM closed overlay, element found!`);
 
           appendHealLog({
             ts: new Date().toISOString(), intent, oldLocator,
@@ -373,17 +373,17 @@ async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, m
 
           return { element: el, used: primary, healed: true, llmRepaired: true };
         } catch (_) {
-          console.log(`❌ LLM overlay close didn't work.`);
+          console.log(` LLM overlay close didn't work.`);
         }
       } else {
-        console.log(`🤖 LLM returned: ${decision.action} (not actionable for element lookup)`);
+        console.log(` LLM returned: ${decision.action} (not actionable for element lookup)`);
       }
     } catch (llmError) {
-      console.log(`❌ LLM heal error: ${llmError.message}`);
+      console.log(` LLM heal error: ${llmError.message}`);
     }
 
     // 4) Total failure
-    console.log(`❌ Healing failed. No fallback or LLM repair worked.`);
+    console.log(` Healing failed. No fallback or LLM repair worked.`);
     appendHealLog({
       ts: new Date().toISOString(), intent, oldLocator,
       newLocator: null, success: false, healed: true, llmRepaired: false,
