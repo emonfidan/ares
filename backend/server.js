@@ -89,9 +89,19 @@ if (!fs.existsSync(USERS_FILE)) {
             name: 'Clean User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         },
-        // 2. Already Challenged — non-Active status (+20), LLM will re-evaluate
+        // 2. Traveler — MEDIUM risk (+30) when logging from new IP
         {
-            id: 2, email: 'challenged@example.com', phone: null, password: 'Password123!',
+            id: 2, email: 'traveler@example.com', phone: null, password: 'Password123!',
+            name: 'Traveler User', linkedProviders: [{ provider: 'password' }],
+            accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '203.0.113.50',
+            loginHistory: [
+                { ip: '198.51.100.1', timestamp: '2026-02-25T08:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
+                { ip: '203.0.113.50', timestamp: '2026-02-27T12:00:00Z', success: true, method: 'password', riskLevel: 'MEDIUM' }
+            ]
+        },
+        // 3. Already Challenged — non-Active status (+20), LLM will re-evaluate
+        {
+            id: 3, email: 'challenged@example.com', phone: null, password: 'Password123!',
             name: 'Challenged User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Challenged', failedAttempts: 0, lastLoginIP: '192.168.1.50',
             loginHistory: [
@@ -99,9 +109,9 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '192.168.1.50', timestamp: '2026-02-28T16:00:00Z', success: false, method: 'password', riskLevel: null }
             ]
         },
-        // 3. High-risk user — Active but 8 failed attempts + different IP = HIGH risk, LLM likely BLOCK
+        // 4. High-risk user — Active but 8 failed attempts + different IP = HIGH risk, LLM likely BLOCK
         {
-            id: 3, email: 'risky@example.com', phone: null, password: 'Password123!',
+            id: 4, email: 'risky@example.com', phone: null, password: 'Password123!',
             name: 'Risky User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 8, lastLoginIP: '10.0.0.1',
             loginHistory: [
@@ -112,9 +122,9 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '172.16.0.99', timestamp: '2026-02-28T20:00:06Z', success: false, method: 'password', riskLevel: null }
             ]
         },
-        // 4. Google OAuth with IP history — may be challenged if IP changes
+        // 5. Google OAuth with IP history — may be challenged if IP changes
         {
-            id: 4, email: 'google.traveler@gmail.com', phone: null, password: null,
+            id: 5, email: 'google.traveler@gmail.com', phone: null, password: null,
             name: 'Google Traveler', linkedProviders: [{ provider: 'google', providerId: 'google_traveler_001' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '85.105.200.1',
             loginHistory: [
@@ -123,9 +133,9 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '85.105.200.1', timestamp: '2026-02-27T16:00:00Z', success: true, method: 'google', riskLevel: 'LOW' }
             ]
         },
-        // 5. Clean GitHub OAuth user — LOW risk (score 0)
+        // 6. Clean GitHub OAuth user — LOW risk (score 0)
         {
-            id: 5, email: 'github-user@example.com', phone: null, password: null,
+            id: 6, email: 'github-user@example.com', phone: null, password: null,
             name: 'GitHub User', linkedProviders: [{ provider: 'github', providerId: 'github_123456' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         }

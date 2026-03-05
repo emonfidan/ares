@@ -565,8 +565,9 @@ const LoginForm = ({ onLoginSuccess }) => {
             <strong>Test Credentials:</strong> (Password for all: Password123!)
           </p>
           <p>🟢 clean@example.com — LOW risk</p>
+          <p>🟡 traveler@example.com — MEDIUM (new IP)</p>
           <p>⚠️ challenged@example.com — Challenged state</p>
-          <p>� risky@example.com — HIGH risk (LLM likely suspends)</p>
+          <p>🔴 risky@example.com — HIGH risk (LLM likely suspends)</p>
         </div>
       </div>
     </div>
