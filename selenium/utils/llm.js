@@ -103,7 +103,7 @@ JSON response:`;
     const result = await model.generateContent(prompt);
     const raw = result.response.text().trim();
 
-    console.log(`   🤖 LLM raw response: ${raw}`);
+    console.log(` LLM raw response: ${raw}`);
 
     // Clean up: remove markdown fences, backticks, etc.
     const cleaned = raw
