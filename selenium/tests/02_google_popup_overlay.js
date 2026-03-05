@@ -31,13 +31,13 @@ const WAIT_MS = 15000;
     try {
       await driver.wait(until.elementLocated(By.id('blocking-overlay')), 4000);
       overlayPresent = true;
-      console.log('✅ Overlay detected');
+      console.log('Overlay detected');
 
       const overlayEl = await driver.findElement(By.id('blocking-overlay'));
       overlayHtml = await driver.executeScript('return arguments[0].outerHTML;', overlayEl);
       console.log(`   Overlay HTML length: ${overlayHtml.length} chars`);
     } catch (_) {
-      console.log('ℹ️ Overlay not detected');
+      console.log('ℹOverlay not detected');
     }
 
     // 2) If overlay exists, ask the UNIFIED LLM agent what to do
@@ -58,11 +58,11 @@ const WAIT_MS = 15000;
       console.log(`🤖 LLM decision: ${decision.action}`);
 
       if (decision.action === 'CLOSE_OVERLAY' && decision.cssSelector) {
-        console.log(`🤖 LLM says close overlay via: ${decision.cssSelector}`);
+        console.log(` LLM says close overlay via: ${decision.cssSelector}`);
 
         const closeBtn = await driver.findElement(By.css(decision.cssSelector));
         await closeBtn.click();
-        console.log('✅ Clicked close button');
+        console.log(' Clicked close button');
 
         await sleep(2000);
 
@@ -72,9 +72,9 @@ const WAIT_MS = 15000;
           return els.length === 0;
         }, WAIT_MS);
 
-        console.log('✅ Overlay closed');
+        console.log(' Overlay closed');
       } else {
-        console.log(`ℹ️ LLM chose ${decision.action} (not CLOSE_OVERLAY)`);
+        console.log(` LLM chose ${decision.action} (not CLOSE_OVERLAY)`);
       }
     }
 
@@ -91,7 +91,7 @@ const WAIT_MS = 15000;
     );
 
     await googleBtn.click();
-    console.log('✅ Clicked Google login button');
+    console.log('Clicked Google login button');
 
     await sleep(3000);
     console.log('TEST 2 PASS: Unified LLM agent handled overlay + Google click succeeded');

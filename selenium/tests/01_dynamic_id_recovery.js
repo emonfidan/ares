@@ -26,7 +26,7 @@ const WAIT_MS = 30000;
     await driver.findElement(By.id('password')).sendKeys('Password123!');
 
     // INTENTIONALLY BROKEN selector — NO fallbacks — forces LLM heal agent
-    console.log('🧪 Attempting login with broken selector (no fallbacks — LLM must heal)...');
+    console.log('Attempting login with broken selector (no fallbacks — LLM must heal)...');
 
     const { element: loginBtn, healed, llmRepaired } = await findWithHealing(
       driver,

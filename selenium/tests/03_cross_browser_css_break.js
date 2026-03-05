@@ -37,16 +37,16 @@ async function safeClick(driver, el) {
       6000, { intent: 'find-google-button-css-break' }
     );
 
-    console.log('✅ Google button located in DOM');
+    console.log(' Google button located in DOM');
 
     // Try click — should fail due to CSS breakage
     let clicked = await safeClick(driver, googleBtn);
 
     if (clicked) {
-      console.log('⚠️ Unexpected: click worked despite CSS breakage');
+      console.log(' Unexpected: click worked despite CSS breakage');
     } else {
-      console.log('❌ As expected: click failed due to CSS breakage');
-      console.log('🤖 Sending element context to unified LLM heal agent...');
+      console.log(' As expected: click failed due to CSS breakage');
+      console.log(' Sending element context to unified LLM heal agent...');
 
       // Capture element state for LLM
       const elementHtml = await driver.executeScript('return arguments[0].outerHTML;', googleBtn);
@@ -76,14 +76,14 @@ async function safeClick(driver, el) {
         domSnippet
       });
 
-      console.log(`🤖 LLM decision: ${decision.action}`);
+      console.log(` LLM decision: ${decision.action}`);
 
       if (decision.action === 'FIX_CSS' && decision.javascript) {
-        console.log(`🤖 LLM fix: ${decision.javascript}`);
+        console.log(`LLM fix: ${decision.javascript}`);
 
         const freshBtn = await driver.findElement(By.id('google-login-button'));
         await driver.executeScript(decision.javascript, freshBtn);
-        console.log('✅ Applied LLM CSS fix');
+        console.log('Applied LLM CSS fix');
         await sleep(800);
 
         // Re-find and click (robust for Firefox)
@@ -101,13 +101,13 @@ async function safeClick(driver, el) {
         }
 
         if (!clicked) throw new Error('Still could not click after LLM CSS fix');
-        console.log('✅ Clicked Google login button after LLM CSS repair');
+        console.log(' Clicked Google login button after LLM CSS repair');
 
       } else if (decision.action === 'JS_CLICK') {
-        console.log('🤖 LLM says: try JS click');
+        console.log('LLM says: try JS click');
         const freshBtn = await driver.findElement(By.id('google-login-button'));
         await driver.executeScript('arguments[0].click();', freshBtn);
-        console.log('✅ JS click succeeded');
+        console.log('JS click succeeded');
 
       } else {
         throw new Error(`LLM returned ${decision.action} — could not fix CSS issue`);
