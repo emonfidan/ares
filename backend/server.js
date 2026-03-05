@@ -83,40 +83,26 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 
 if (!fs.existsSync(USERS_FILE)) {
     const initialUsers = [
-        // Scenario 1: Clean first-time user — LOW risk (score 0), LLM not triggered
+        // 1. Clean user — LOW risk (score 0), LLM not triggered
         {
             id: 1, email: 'clean@example.com', phone: '5551234567', password: 'Password123!',
             name: 'Clean User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         },
-        // Scenario 2: User with 6 failed attempts — MEDIUM risk (score 30), LLM triggered
+        // 2. Already Challenged — non-Active status (+20), LLM will re-evaluate
         {
-            id: 2, email: 'suspicious@example.com', phone: '5559876543', password: 'Password123!',
-            name: 'Suspicious User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Active', failedAttempts: 6, lastLoginIP: '192.168.1.10',
+            id: 2, email: 'challenged@example.com', phone: null, password: 'Password123!',
+            name: 'Challenged User', linkedProviders: [{ provider: 'password' }],
+            accountStatus: 'Challenged', failedAttempts: 0, lastLoginIP: '192.168.1.50',
             loginHistory: [
-                { ip: '192.168.1.10', timestamp: '2026-02-28T10:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
-                { ip: '192.168.1.10', timestamp: '2026-02-28T14:00:05Z', success: false, method: 'password', riskLevel: null },
-                { ip: '192.168.1.10', timestamp: '2026-02-28T14:00:10Z', success: false, method: 'password', riskLevel: null },
-                { ip: '192.168.1.10', timestamp: '2026-02-28T14:00:15Z', success: false, method: 'password', riskLevel: null },
-                { ip: '192.168.1.10', timestamp: '2026-02-28T14:00:20Z', success: false, method: 'password', riskLevel: null },
-                { ip: '192.168.1.10', timestamp: '2026-02-28T14:00:25Z', success: false, method: 'password', riskLevel: null }
+                { ip: '192.168.1.50', timestamp: '2026-02-28T15:00:00Z', success: true, method: 'password', riskLevel: 'MEDIUM' },
+                { ip: '192.168.1.50', timestamp: '2026-02-28T16:00:00Z', success: false, method: 'password', riskLevel: null }
             ]
         },
-        // Scenario 3: User with established IP — MEDIUM risk (score 30) when logging from new IP
+        // 3. High-risk user — Active but 8 failed attempts + different IP = HIGH risk, LLM likely BLOCK
         {
-            id: 3, email: 'traveler@example.com', phone: null, password: 'Password123!',
-            name: 'Traveler User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '203.0.113.50',
-            loginHistory: [
-                { ip: '198.51.100.1', timestamp: '2026-02-25T08:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
-                { ip: '203.0.113.50', timestamp: '2026-02-27T12:00:00Z', success: true, method: 'password', riskLevel: 'MEDIUM' }
-            ]
-        },
-        // Scenario 4: Brute force target — HIGH risk (score 60+), 8 failures + new IP, LLM likely CHALLENGE/BLOCK
-        {
-            id: 4, email: 'bruteforce@example.com', phone: null, password: 'Password123!',
-            name: 'Bruteforce Target', linkedProviders: [{ provider: 'password' }],
+            id: 3, email: 'risky@example.com', phone: null, password: 'Password123!',
+            name: 'Risky User', linkedProviders: [{ provider: 'password' }],
             accountStatus: 'Active', failedAttempts: 8, lastLoginIP: '10.0.0.1',
             loginHistory: [
                 { ip: '10.0.0.1', timestamp: '2026-02-28T09:00:00Z', success: true, method: 'password', riskLevel: 'LOW' },
@@ -126,34 +112,9 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '172.16.0.99', timestamp: '2026-02-28T20:00:06Z', success: false, method: 'password', riskLevel: null }
             ]
         },
-        // Scenario 5: Already Challenged account — MEDIUM risk (score 35), non-Active status +20 compounds with failures
+        // 4. Google OAuth with IP history — may be challenged if IP changes
         {
-            id: 5, email: 'challenged@example.com', phone: null, password: 'Password123!',
-            name: 'Challenged User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Challenged', failedAttempts: 3, lastLoginIP: '192.168.1.50',
-            loginHistory: [
-                { ip: '192.168.1.50', timestamp: '2026-02-28T15:00:00Z', success: true, method: 'password', riskLevel: 'MEDIUM' },
-                { ip: '192.168.1.50', timestamp: '2026-02-28T16:00:00Z', success: false, method: 'password', riskLevel: null },
-                { ip: '192.168.1.50', timestamp: '2026-02-28T16:00:05Z', success: false, method: 'password', riskLevel: null }
-            ]
-        },
-        // Scenario 6: Suspended account (brute-force) — blocked by LLM's BLOCK verdict
-        {
-            id: 6, email: 'suspended-brute@example.com', phone: null, password: 'Password123!',
-            name: 'Suspended Brute User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Suspended', failedAttempts: 10, lastLoginIP: '10.10.10.10',
-            loginHistory: []
-        },
-        // Scenario 7: Suspended account — blocked at login gate, previously blocked by LLM
-        {
-            id: 7, email: 'suspended@example.com', phone: null, password: 'Password123!',
-            name: 'Suspended User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Suspended', failedAttempts: 5, lastLoginIP: '192.168.100.1',
-            loginHistory: []
-        },
-        // Scenario 8: Google OAuth user with IP history — MEDIUM risk if IP changes (only risk vector for social auth)
-        {
-            id: 8, email: 'google.traveler@gmail.com', phone: null, password: null,
+            id: 4, email: 'google.traveler@gmail.com', phone: null, password: null,
             name: 'Google Traveler', linkedProviders: [{ provider: 'google', providerId: 'google_traveler_001' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: '85.105.200.1',
             loginHistory: [
@@ -162,9 +123,9 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '85.105.200.1', timestamp: '2026-02-27T16:00:00Z', success: true, method: 'google', riskLevel: 'LOW' }
             ]
         },
-        // Scenario 9: GitHub OAuth user, clean state — LOW risk (score 0)
+        // 5. Clean GitHub OAuth user — LOW risk (score 0)
         {
-            id: 9, email: 'github-user@example.com', phone: null, password: null,
+            id: 5, email: 'github-user@example.com', phone: null, password: null,
             name: 'GitHub User', linkedProviders: [{ provider: 'github', providerId: 'github_123456' }],
             accountStatus: 'Active', failedAttempts: 0, lastLoginIP: null, loginHistory: []
         }
@@ -369,7 +330,7 @@ app.post('/api/login', async (req, res) => {
             .filter(p => p !== 'password');
         return res.status(403).json({
             success: false,
-            message: `This account uses ${providers.join('/')} login. Please register a password or use your social login.`,
+            message: `This account uses ${providers.join('/')} login. Please register a password once you are logged inor use your social login.`,
             requiresPasswordSetup: true,
             availableProviders: providers
         });
