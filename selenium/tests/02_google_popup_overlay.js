@@ -1,13 +1,14 @@
-// selenium/tests/03_google_popup_overlay.js
-// TEST 2: Popup/overlay blocks Google login
-// popup appears -> LLM decides -> if CLOSE_POPUP then close -> continue
+// selenium/tests/02_google_popup_overlay.js
+// TEST 2: Popup/overlay blocks Google login — unified LLM agent handles it
+// The LLM receives the full DOM + overlay context, diagnoses ELEMENT_OBSCURED,
+// and returns a CLOSE_OVERLAY action with the selector of the close button.
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { By, until } = require('selenium-webdriver');
 const { buildDriver } = require('../utils/driver');
-const { findWithHealing } = require('../utils/heal');
-const { decideOverlayAction } = require('../utils/llm');
+const { findWithHealing, saveDomSnapshot, extractDomSnippet } = require('../utils/heal');
+const { healPage } = require('../utils/llm');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,62 +16,53 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const WAIT_MS = 15000;
 
 (async function googlePopupOverlay() {
-  console.log('▶ TEST 2 (Google Popup Overlay): starting...');
+  console.log('▶ TEST 2 (Google Popup Overlay — Unified LLM Agent): starting...');
   const driver = buildDriver();
 
   try {
-    // Ensure popup is only enabled for tests
     await driver.get(`${FRONTEND_URL}/?e2ePopup=1`);
-
     await sleep(2000);
-
-    // Wait for Google button to exist in DOM
     await driver.wait(until.elementLocated(By.id('google-login-button')), WAIT_MS);
 
     // 1) Detect overlay
     let overlayPresent = false;
-    let overlayText = '';
+    let overlayHtml = '';
 
     try {
       await driver.wait(until.elementLocated(By.id('blocking-overlay')), 4000);
       overlayPresent = true;
-      console.log('✅ Overlay detected (blocking-overlay present)');
+      console.log('✅ Overlay detected');
 
-      // Grab overlay text for LLM context (best-effort)
-      try {
-        const overlayEl = await driver.findElement(By.id('blocking-overlay'));
-        overlayText = await overlayEl.getText();
-      } catch (_) {}
-
-      await sleep(2000);
+      const overlayEl = await driver.findElement(By.id('blocking-overlay'));
+      overlayHtml = await driver.executeScript('return arguments[0].outerHTML;', overlayEl);
+      console.log(`   Overlay HTML length: ${overlayHtml.length} chars`);
     } catch (_) {
-      console.log('ℹ️ Overlay not detected (if you expected it, check LoginForm.jsx/CSS edits)');
+      console.log('ℹ️ Overlay not detected');
     }
 
-    // 2) If overlay exists, LLM decides what to do
+    // 2) If overlay exists, ask the UNIFIED LLM agent what to do
     if (overlayPresent) {
-      const decision = await decideOverlayAction({
-        overlayText,
-        hasCloseButton: true,
-        goal: 'Proceed to click the Google login button'
+      console.log('🤖 Sending page context to unified LLM heal agent...');
+
+      const { html: fullHtml } = await saveDomSnapshot(driver, 'overlay_analysis');
+      const domSnippet = extractDomSnippet(fullHtml);
+
+      const decision = await healPage({
+        intent: 'Click the Google login button to initiate OAuth flow',
+        errorType: 'ELEMENT_OBSCURED',
+        failedSelector: '#google-login-button',
+        overlayHtml,
+        domSnippet
       });
 
-      console.log('LLM decision:', decision);
+      console.log(`🤖 LLM decision: ${decision.action}`);
 
-      if (decision === 'CLOSE_POPUP') {
-        const { element: closeBtn } = await findWithHealing(
-          driver,
-          By.id('popup-close'),
-          [
-            By.css('#blocking-overlay button'),
-            By.xpath("//button[contains(.,'Close')]")
-          ],
-          6000,
-          { intent: 'scenario2-close-popup' }
-        );
+      if (decision.action === 'CLOSE_OVERLAY' && decision.cssSelector) {
+        console.log(`🤖 LLM says close overlay via: ${decision.cssSelector}`);
 
+        const closeBtn = await driver.findElement(By.css(decision.cssSelector));
         await closeBtn.click();
-        console.log('Clicked popup close button');
+        console.log('✅ Clicked close button');
 
         await sleep(2000);
 
@@ -80,13 +72,13 @@ const WAIT_MS = 15000;
           return els.length === 0;
         }, WAIT_MS);
 
-        console.log('Overlay closed (no longer blocking)');
+        console.log('✅ Overlay closed');
       } else {
-        console.log(' LLM chose CONTINUE (did not close popup)');
+        console.log(`ℹ️ LLM chose ${decision.action} (not CLOSE_OVERLAY)`);
       }
     }
 
-    // 3) Continue: click Google login button
+    // 3) Click Google login
     const { element: googleBtn } = await findWithHealing(
       driver,
       By.id('google-login-button'),
@@ -95,15 +87,14 @@ const WAIT_MS = 15000;
         By.css('button.social-button.google')
       ],
       6000,
-      { intent: 'scenario2-click-google' }
+      { intent: 'click-google-login' }
     );
 
     await googleBtn.click();
-    console.log('Clicked Google login button');
+    console.log('✅ Clicked Google login button');
 
     await sleep(3000);
-
-    console.log('TEST 2 PASS: LLM decision + popup handling + Google click attempted');
+    console.log('TEST 2 PASS: Unified LLM agent handled overlay + Google click succeeded');
   } catch (err) {
     console.error('TEST 2 FAIL:', err.message);
     process.exitCode = 1;

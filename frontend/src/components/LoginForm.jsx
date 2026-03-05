@@ -569,8 +569,8 @@ const LoginForm = ({ onLoginSuccess }) => {
           <p>🟡 traveler@example.com — MEDIUM (new IP)</p>
           <p>🔴 bruteforce@example.com — HIGH (fails + IP)</p>
           <p>⚠️ challenged@example.com — Challenged state</p>
-          <p>🔒 locked@example.com — Locked (blocked)</p>
-          <p>🚫 suspended@example.com — Suspended (blocked)</p>
+          <p>🚫 suspended-brute@example.com — Suspended (brute-force, blocked by LLM)</p>
+          <p>🚫 suspended@example.com — Suspended (blocked by LLM)</p>
         </div>
       </div>
     </div>

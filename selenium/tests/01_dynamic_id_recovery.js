@@ -1,59 +1,55 @@
-// selenium/tests/02_dynamic_id_recovery.js
-// TEST 1: Dynamic ID Recovery (self-healing demo)
-// What it proves: when the primary locator is "broken", healing triggers and a fallback works
+// selenium/tests/01_dynamic_id_recovery.js
+// TEST 1: Dynamic ID Recovery (LLM-powered self-healing)
+// What it proves: when the primary locator is "broken" and NO hardcoded
+// fallbacks are provided, the unified LLM agent analyzes the DOM,
+// diagnoses ELEMENT_NOT_FOUND, and returns a REPAIR_SELECTOR action.
+
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { By, until } = require('selenium-webdriver');
 const { buildDriver } = require('../utils/driver');
 const { findWithHealing } = require('../utils/heal');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const WAIT_MS = 15000;
+const WAIT_MS = 30000;
 
 (async function dynamicIdRecovery() {
-  console.log('▶ TEST 1 (Dynamic ID Recovery): starting...');
+  console.log('▶ TEST 1 (Dynamic ID Recovery — LLM Self-Healing): starting...');
   const driver = buildDriver();
 
   try {
-    // 1) Open app
     await driver.get(FRONTEND_URL);
-
-    // 2) Wait for login form
     await driver.wait(until.elementLocated(By.id('identifier')), WAIT_MS);
     await driver.wait(until.elementLocated(By.id('password')), WAIT_MS);
 
-    // 3) Fill credentials
     await driver.findElement(By.id('identifier')).sendKeys('clean@example.com');
     await driver.findElement(By.id('password')).sendKeys('Password123!');
 
-    // 4) INTENTIONALLY BROKEN primary locator to force healing
-    //    This simulates "the selector changed" (dynamic IDs/classes, refactor, etc.)
-    const { element: loginBtn, used } = await findWithHealing(
+    // INTENTIONALLY BROKEN selector — NO fallbacks — forces LLM heal agent
+    console.log('🧪 Attempting login with broken selector (no fallbacks — LLM must heal)...');
+
+    const { element: loginBtn, healed, llmRepaired } = await findWithHealing(
       driver,
-      By.id('login-button-BROKEN'), // intentionally wrong
-      [
-        // fallback 1: type=submit button (stable-ish)
-        By.css('button[type="submit"]'),
-        // fallback 2: button containing the text "Login"
-        By.xpath("//button[contains(.,'Login')]")
-      ],
-      6000,
-      { intent: 'scenario1-dynamic-id-login-button' }
+      By.id('login-button-BROKEN'),  // intentionally wrong
+      [],                              // NO fallbacks
+      15000,
+      { intent: 'login-button' }
     );
 
-    // Optional: print which locator ended up working
-    if (used && used.using && used.value) {
-      console.log(` Locator used = ${used.using}=${used.value}`);
+    console.log(`   Healed: ${healed}, LLM Repaired: ${llmRepaired}`);
+
+    if (!healed || !llmRepaired) {
+      throw new Error('Expected LLM repair (no fallbacks were provided)');
     }
 
     await loginBtn.click();
 
-    // 5) Verify dashboard loaded
     await driver.wait(
       until.elementLocated(By.xpath("//*[contains(text(),'Welcome to ARES')]")),
       WAIT_MS
     );
 
-    console.log('TEST 1 PASS: Login succeeded via healing');
+    console.log('TEST 1 PASS: Login succeeded via LLM self-healing (no hardcoded fallbacks)');
   } catch (err) {
     console.error('TEST 1 FAIL:', err.message);
     process.exitCode = 1;

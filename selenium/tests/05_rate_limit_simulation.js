@@ -1,5 +1,5 @@
 // selenium/tests/05_rate_limit_simulation.js
-// TC-05: Brute force escalation -> Challenged at 5, Locked at 10
+// TC-05: Brute-force escalation — LLM-driven risk assessment on failed logins
 
 const { By, until } = require('selenium-webdriver');
 const { buildDriver } = require('../utils/driver');
@@ -34,8 +34,8 @@ async function hardClick(driver, locator, label) {
   await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", el);
   await sleep(120);
 
-  try { await el.click(); return; } catch {}
-  try { await driver.actions({ async: true }).move({ origin: el }).click().perform(); return; } catch {}
+  try { await el.click(); return; } catch { }
+  try { await driver.actions({ async: true }).move({ origin: el }).click().perform(); return; } catch { }
   try { await driver.executeScript('arguments[0].click();', el); return; } catch (e) {
     throw new Error(`Could not click ${label}: ${e.message}`);
   }
@@ -44,7 +44,7 @@ async function hardClick(driver, locator, label) {
 async function tryClickIfExists(driver, id) {
   const els = await driver.findElements(By.id(id));
   if (els.length > 0) {
-    try { await hardClick(driver, By.id(id), id); } catch {}
+    try { await hardClick(driver, By.id(id), id); } catch { }
   }
 }
 
@@ -63,7 +63,7 @@ async function apiPost(path) {
     headers: { 'Content-Type': 'application/json' }
   });
   let data = null;
-  try { data = await res.json(); } catch {}
+  try { data = await res.json(); } catch { }
   return { status: res.status, data };
 }
 
@@ -87,7 +87,7 @@ async function resetAccount(email) {
 }
 
 (async function tc05() {
-  console.log('▶ TEST 05 (Brute Force Escalation) starting...');
+  console.log('▶ TEST 05 (Brute Force Escalation — LLM-Driven) starting...');
   const driver = buildDriver();
 
   try {
@@ -105,7 +105,12 @@ async function resetAccount(email) {
 
     await setValue(driver, 'identifier', EMAIL);
 
-    // 10 wrong attempts — spaced to avoid backend 8/30s rate limiter (your server.js limiter)
+    // Track state transitions across attempts
+    let sawChallenged = false;
+    let sawSuspended = false;
+    const verdicts = [];
+
+    // 10 wrong attempts — spaced to avoid backend 8/30s rate limiter
     for (let attempt = 1; attempt <= 10; attempt++) {
       console.log(`--- Wrong Attempt ${attempt} ---`);
 
@@ -114,7 +119,7 @@ async function resetAccount(email) {
       await findWithHealing(driver, By.id('login-button'), [], WAIT_MS, { intent: 'login-button' });
       await hardClick(driver, By.id('login-button'), 'login-button');
 
-      await sleep(700);
+      await sleep(1500); // Extra time for LLM API call
 
       const uiMsg = (await getMessageText(driver)).replace(/\s+/g, ' ').trim();
       const st = await getBackendStatus(EMAIL);
@@ -122,42 +127,66 @@ async function resetAccount(email) {
       console.log(`UI: "${uiMsg}"`);
       console.log(`Backend: status=${st.accountStatus}, failedAttempts=${st.failedAttempts}`);
 
-      // Assertions at thresholds (backend truth)
-      if (attempt === 5 && st.accountStatus !== 'Challenged') {
-        throw new Error(`Expected Challenged at attempt 5, got ${st.accountStatus}`);
-      }
-      if (attempt === 10 && st.accountStatus !== 'Locked') {
-        throw new Error(`Expected Locked at attempt 10, got ${st.accountStatus}`);
+      // Track state transitions
+      if (st.accountStatus === 'Challenged') sawChallenged = true;
+      if (st.accountStatus === 'Suspended') sawSuspended = true;
+      verdicts.push(st.accountStatus);
+
+      // If already Suspended, the account is blocked — no point continuing attempts
+      if (st.accountStatus === 'Suspended') {
+        console.log(`Account suspended at attempt ${attempt}. Stopping brute-force loop.`);
+        break;
       }
 
       // spacing avoids 429
       if (attempt < 10) await sleep(4000);
     }
 
-    // After lock, correct password must still be denied
-    console.log('Trying correct password after lock (should be denied)...');
-    await setValue(driver, 'password', RIGHT_PW);
-    await hardClick(driver, By.id('login-button'), 'login-button');
-    await sleep(700);
+    console.log(`\nState transitions observed: [${verdicts.join(' → ')}]`);
+    console.log(`Saw Challenged: ${sawChallenged}, Saw Suspended: ${sawSuspended}`);
 
-    const afterMsg = (await getMessageText(driver)).replace(/\s+/g, ' ').trim();
-    const after = await getBackendStatus(EMAIL);
+    // The LLM must have escalated at some point during 10 failed attempts.
+    // With the risk scoring:
+    //   - At 6 failed attempts: score = 30 (MEDIUM) → LLM is invoked
+    //   - The LLM should respond with CHALLENGE or BLOCK given accumulating failures
+    // We require that the account reached at least Challenged OR Suspended.
+    if (!sawChallenged && !sawSuspended) {
+      throw new Error(
+        'Expected the LLM to escalate to Challenged or Suspended during brute-force, ' +
+        `but account remained in: [${verdicts.join(', ')}]`
+      );
+    }
 
-    console.log(`UI after correct pw: "${afterMsg}"`);
-    console.log(`Backend after correct pw: status=${after.accountStatus}, failedAttempts=${after.failedAttempts}`);
+    // After brute-force, correct password should be denied if Suspended
+    const currentStatus = await getBackendStatus(EMAIL);
+    if (currentStatus.accountStatus === 'Suspended') {
+      console.log('Account is Suspended — verifying correct password is denied...');
+      await setValue(driver, 'password', RIGHT_PW);
+      await hardClick(driver, By.id('login-button'), 'login-button');
+      await sleep(700);
 
-    if (after.accountStatus !== 'Locked') {
-      throw new Error(`Expected Locked after correct-password attempt, got ${after.accountStatus}`);
+      const afterMsg = (await getMessageText(driver)).replace(/\s+/g, ' ').trim();
+      const after = await getBackendStatus(EMAIL);
+
+      console.log(`UI after correct pw: "${afterMsg}"`);
+      console.log(`Backend after correct pw: status=${after.accountStatus}`);
+
+      if (after.accountStatus !== 'Suspended') {
+        throw new Error(`Expected Suspended after correct-password attempt, got ${after.accountStatus}`);
+      }
+    } else if (currentStatus.accountStatus === 'Challenged') {
+      console.log('Account is Challenged — LLM escalated but did not fully block.');
+      console.log('This is acceptable: the LLM decided CHALLENGE rather than BLOCK.');
     }
 
     console.log('TEST 05 PASSED.');
 
-  // Clean up: reset account so TC-05 leaves the system in a fresh state
-  console.log('↺ Post-test cleanup reset...');
-  await resetAccount(EMAIL);
+    // Clean up: reset account so TC-05 leaves the system in a fresh state
+    console.log('↺ Post-test cleanup reset...');
+    await resetAccount(EMAIL);
 
-const cleaned = await getBackendStatus(EMAIL);
-console.log(`Backend after cleanup: ${cleaned.accountStatus}, failedAttempts=${cleaned.failedAttempts}`);
+    const cleaned = await getBackendStatus(EMAIL);
+    console.log(`Backend after cleanup: ${cleaned.accountStatus}, failedAttempts=${cleaned.failedAttempts}`);
   } catch (err) {
     console.error('TEST 05 FAILED:', err.message);
     throw err;

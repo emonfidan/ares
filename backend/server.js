@@ -137,11 +137,11 @@ if (!fs.existsSync(USERS_FILE)) {
                 { ip: '192.168.1.50', timestamp: '2026-02-28T16:00:05Z', success: false, method: 'password', riskLevel: null }
             ]
         },
-        // Scenario 6: Locked account — blocked at login gate, cannot attempt login
+        // Scenario 6: Suspended account (brute-force) — blocked by LLM's BLOCK verdict
         {
-            id: 6, email: 'locked@example.com', phone: null, password: 'Password123!',
-            name: 'Locked User', linkedProviders: [{ provider: 'password' }],
-            accountStatus: 'Locked', failedAttempts: 10, lastLoginIP: '10.10.10.10',
+            id: 6, email: 'suspended-brute@example.com', phone: null, password: 'Password123!',
+            name: 'Suspended Brute User', linkedProviders: [{ provider: 'password' }],
+            accountStatus: 'Suspended', failedAttempts: 10, lastLoginIP: '10.10.10.10',
             loginHistory: []
         },
         // Scenario 7: Suspended account — blocked at login gate, previously blocked by LLM
@@ -208,8 +208,8 @@ function calculateRiskScore(user, clientIP) {
         factors.push('New IP address detected');
     }
 
-    // Factor 2: Failed attempts (5 points each, capped at 30)
-    const failedPenalty = Math.min(user.failedAttempts * 5, 30);
+    // Factor 2: Failed attempts (5 points each, uncapped)
+    const failedPenalty = user.failedAttempts * 5;
     if (failedPenalty > 0) {
         score += failedPenalty;
         factors.push(`${user.failedAttempts} failed login attempt(s)`);
@@ -375,14 +375,7 @@ app.post('/api/login', async (req, res) => {
         });
     }
 
-    // Account status check — Locked and Suspended users cannot login
-    if (user.accountStatus === 'Locked') {
-        return res.status(403).json({
-            success: false,
-            message: 'Account is locked. Please contact support.'
-        });
-    }
-
+    // Account status check — Suspended users cannot login
     if (user.accountStatus === 'Suspended') {
         return res.status(403).json({
             success: false,
@@ -391,49 +384,40 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Password check
-if (user.password !== password) {
-  user.failedAttempts = (user.failedAttempts || 0) + 1;
+    if (user.password !== password) {
+        user.failedAttempts = (user.failedAttempts || 0) + 1;
 
-  // Brute-force thresholds
-  if (user.failedAttempts >= 10) {
-    user.accountStatus = 'Locked';
-  } else if (user.failedAttempts >= 5) {
-    user.accountStatus = 'Challenged';
-  }
+        // LLM-driven risk assessment on failed login
+        const { riskScore: failRisk, llmVerdict: failVerdict } =
+            await performRiskAssessment(user, clientIP, 'password', users);
 
-  // Record failed attempt in history
-  if (!user.loginHistory) user.loginHistory = [];
-  user.loginHistory.push({
-    ip: clientIP,
-    timestamp: new Date().toISOString(),
-    success: false,
-    method: 'password',
-    riskLevel: null
-  });
+        // If LLM said BLOCK → account is now Suspended
+        if (failVerdict === 'BLOCK') {
+            return res.status(403).json({
+                success: false,
+                message: 'Account suspended due to suspicious activity.',
+                accountStatus: user.accountStatus,
+                riskAssessment: {
+                    riskLevel: failRisk.riskLevel,
+                    riskScore: failRisk.score,
+                    factors: failRisk.factors,
+                    llmVerdict: failVerdict
+                }
+            });
+        }
 
-  if (user.loginHistory.length > 10) {
-    user.loginHistory = user.loginHistory.slice(-10);
-  }
-
-  saveUsers(users);
-
-  // If locked, return 403 (matches your report expectation)
-  if (user.accountStatus === 'Locked') {
-    return res.status(403).json({
-      success: false,
-      message: 'Account is locked due to too many failed attempts.',
-      remainingAttempts: 0,
-      accountStatus: user.accountStatus
-    });
-  }
-
-  return res.status(401).json({
-    success: false,
-    message: 'Invalid credentials',
-    remainingAttempts: Math.max(0, 10 - user.failedAttempts),
-    accountStatus: user.accountStatus
-  });
-}
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid credentials',
+            accountStatus: user.accountStatus,
+            riskAssessment: {
+                riskLevel: failRisk.riskLevel,
+                riskScore: failRisk.score,
+                factors: failRisk.factors,
+                llmVerdict: failVerdict
+            }
+        });
+    }
     // Password correct — perform risk assessment
     const { riskScore, llmVerdict } = await performRiskAssessment(user, clientIP, 'password', users);
 

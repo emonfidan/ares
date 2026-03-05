@@ -1,36 +1,26 @@
-// selenium/utils/heal.js
-// Self-healing element lookup helper for Selenium
-// - Tries a primary locator first
-// - If it fails, captures a DOM snapshot
-// - Tries fallback locators
-// - If fallbacks fail, asks LLM for a new selector and validates it
-// - Logs healing attempts/results to logs/heal_log.jsonl (JSON Lines)
+// utils/heal.js
+// Self-healing element lookup for Selenium.
+// Uses the unified LLM healPage agent when hardcoded fallbacks fail.
 
 const fs = require('fs');
 const path = require('path');
-const { until, By } = require('selenium-webdriver');
-const { suggestSelector } = require('./llm');
+const { By, until } = require('selenium-webdriver');
+const { healPage } = require('./llm');
 
+// --- Log helpers ---
 
-// Log folder + helpers
-
-
-// logs/ folder (at selenium/logs)
 const LOG_DIR = path.join(__dirname, '..', 'logs');
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
 
-// A filesystem-safe timestamp (no ":" or ".")
 function nowStamp() {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
-// Append one JSON object per line (easy to grep + parse)
 function appendHealLog(entry) {
   const logPath = path.join(LOG_DIR, 'heal_log.jsonl');
   fs.appendFileSync(logPath, JSON.stringify(entry) + '\n', 'utf8');
 }
 
-// Convert selenium-webdriver locator to a readable string safely
 function locatorToString(loc) {
   if (!loc) return null;
   if (typeof loc.using === 'string' && typeof loc.value === 'string') {
@@ -39,182 +29,143 @@ function locatorToString(loc) {
   return String(loc);
 }
 
-// DOM snapshot helper
+// --- DOM helpers ---
 
-
-// Save full HTML snapshot of current page
 async function saveDomSnapshot(driver, label = 'dom') {
   const html = await driver.getPageSource();
   const file = path.join(LOG_DIR, `${label}_${nowStamp()}.html`);
   fs.writeFileSync(file, html, 'utf8');
-  return file;
+  return { filePath: file, html };
 }
 
-// LLM selector parsing + validation helpers
-
-function parseSuggestedSelector(raw) {
-  if (!raw) return null;
-  const line = String(raw).trim();
-
-  // Must be a single line directive: "CSS: ..." or "XPATH: ..."
-  if (/^CSS:\s*/i.test(line)) {
-    return { type: 'css', value: line.replace(/^CSS:\s*/i, '').trim(), raw: line };
-  }
-  if (/^XPATH:\s*/i.test(line)) {
-    return { type: 'xpath', value: line.replace(/^XPATH:\s*/i, '').trim(), raw: line };
-  }
-  return null;
+function extractDomSnippet(fullHtml, maxLength = 4000) {
+  const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyHtml = bodyMatch ? bodyMatch[1] : fullHtml;
+  if (bodyHtml.length <= maxLength) return bodyHtml;
+  const half = Math.floor(maxLength / 2);
+  return bodyHtml.substring(0, half) + '\n... [truncated] ...\n' + bodyHtml.substring(bodyHtml.length - half);
 }
 
-function byFromParsed(p) {
-  if (!p || !p.value) return null;
-  if (p.type === 'css') return By.css(p.value);
-  if (p.type === 'xpath') return By.xpath(p.value);
-  return null;
-}
+// --- Core: findWithHealing ---
 
-async function validateSelectorExists(driver, by) {
-  // findElements doesn't throw; returns []
-  const els = await driver.findElements(by);
-  return els.length > 0;
-}
-
-// findWithHealing (core)
+/**
+ * findWithHealing
+ *  1. Try primary locator
+ *  2. Try hardcoded fallbacks
+ *  3. Call the unified LLM healPage agent (REPAIR_SELECTOR action)
+ *
+ * Returns: { element, used, healed, llmRepaired }
+ */
 async function findWithHealing(driver, primary, fallbacks = [], waitMs = 8000, meta = {}) {
   const { intent = 'element lookup' } = meta;
-
   const ts = new Date().toISOString();
   const oldLocator = locatorToString(primary);
-
   let url = null;
-  try {
-    url = await driver.getCurrentUrl();
-  } catch (_) {}
+  try { url = await driver.getCurrentUrl(); } catch (_) { }
 
-  // 1) Try primary locator first
+  // 1) Primary locator
   try {
     await driver.wait(until.elementLocated(primary), waitMs);
     const el = await driver.findElement(primary);
 
     appendHealLog({
-      ts,
-      intent,
-      oldLocator,
-      newLocator: oldLocator,
-      success: true,
-      healed: false,
-      url,
-      domPath: null
+      ts, intent, oldLocator, newLocator: oldLocator,
+      success: true, healed: false, llmRepaired: false, url, domPath: null
     });
 
-    return { element: el, used: primary };
+    return { element: el, used: primary, healed: false, llmRepaired: false };
   } catch (e1) {
-    // Primary failed -> healing begins
-    const domFile = await saveDomSnapshot(driver, `heal_${intent}`);
-    console.log(`Healing triggered (${intent}). DOM saved: ${domFile}`);
+    const { filePath: domFile, html: fullHtml } = await saveDomSnapshot(driver, `heal_${intent}`);
+    console.log(`🩹 Healing triggered (${intent}). DOM saved: ${domFile}`);
     console.log(`   Failed locator: ${oldLocator}`);
 
-    // 2) Try fallbacks first (your current behavior)
+    // 2) Hardcoded fallbacks
     for (const fb of fallbacks) {
       const fbStr = locatorToString(fb);
-
       try {
         await driver.wait(until.elementLocated(fb), waitMs);
         const el = await driver.findElement(fb);
-
-        console.log(` Healed using fallback: ${fbStr}`);
+        console.log(`✅ Healed using fallback: ${fbStr}`);
 
         appendHealLog({
-          ts: new Date().toISOString(),
-          intent,
-          oldLocator,
-          newLocator: fbStr,
-          success: true,
-          healed: true,
-          url,
-          domPath: domFile,
-          strategy: 'fallback'
+          ts: new Date().toISOString(), intent, oldLocator, newLocator: fbStr,
+          success: true, healed: true, llmRepaired: false, url, domPath: domFile
         });
 
-        return { element: el, used: fb };
-      } catch (_) {
-        // keep trying
-      }
+        return { element: el, used: fb, healed: true, llmRepaired: false };
+      } catch (_) { }
     }
 
-    // 3) FallBacks failed -> try LLM selector repair
+    // 3) Unified LLM heal agent
+    console.log('🤖 All fallbacks failed. Invoking LLM heal agent...');
+
     try {
-      const domHtml = await driver.getPageSource();
-
-      const llmRaw = await suggestSelector({
-        domHtml,
-        goal: intent,
-        oldLocator
-      });
-
-      const parsed = parseSuggestedSelector(llmRaw);
-      const by = byFromParsed(parsed);
-
-      if (!by) throw new Error(`LLM output not parseable as selector: "${llmRaw}"`);
-
-      const exists = await validateSelectorExists(driver, by);
-      if (!exists) throw new Error(`LLM selector did not match any element: "${llmRaw}"`);
-
-      // Now use it as the healed selector
-      await driver.wait(until.elementLocated(by), waitMs);
-      const el = await driver.findElement(by);
-
-      console.log(` Healed using LLM selector: ${llmRaw}`);
-
-      appendHealLog({
-        ts: new Date().toISOString(),
+      const domSnippet = extractDomSnippet(fullHtml);
+      const decision = await healPage({
         intent,
-        oldLocator,
-        newLocator: locatorToString(by),
-        success: true,
-        healed: true,
-        url,
-        domPath: domFile,
-        strategy: 'llm',
-        llmRaw
+        errorType: 'ELEMENT_NOT_FOUND',
+        failedSelector: oldLocator,
+        domSnippet
       });
 
-      return { element: el, used: by };
-    } catch (llmErr) {
-      console.log(` LLM heal failed: ${llmErr.message}`);
-      // Continue to final failure logging below
-      appendHealLog({
-        ts: new Date().toISOString(),
-        intent,
-        oldLocator,
-        newLocator: null,
-        success: false,
-        healed: true,
-        url,
-        domPath: domFile,
-        strategy: 'llm',
-        error: llmErr?.message || 'LLM heal failed'
-      });
+      if (decision.action === 'REPAIR_SELECTOR' && decision.cssSelector) {
+        console.log(`🤖 LLM action: REPAIR_SELECTOR → "${decision.cssSelector}"`);
+        const llmLocator = By.css(decision.cssSelector);
+
+        try {
+          await driver.wait(until.elementLocated(llmLocator), waitMs);
+          const el = await driver.findElement(llmLocator);
+          console.log(`✅ LLM repair successful!`);
+
+          appendHealLog({
+            ts: new Date().toISOString(), intent, oldLocator,
+            newLocator: decision.cssSelector, success: true, healed: true,
+            llmRepaired: true, llmAction: 'REPAIR_SELECTOR', url, domPath: domFile
+          });
+
+          return { element: el, used: llmLocator, healed: true, llmRepaired: true };
+        } catch (_) {
+          console.log(`❌ LLM-suggested selector didn't work: ${decision.cssSelector}`);
+        }
+      } else if (decision.action === 'CLOSE_OVERLAY' && decision.cssSelector) {
+        // LLM detected an overlay blocking the element — try to close it
+        console.log(`🤖 LLM action: CLOSE_OVERLAY → clicking "${decision.cssSelector}"`);
+        try {
+          const closeBtn = await driver.findElement(By.css(decision.cssSelector));
+          await closeBtn.click();
+          // Wait a beat, then retry the primary locator
+          await new Promise(r => setTimeout(r, 1000));
+          await driver.wait(until.elementLocated(primary), waitMs);
+          const el = await driver.findElement(primary);
+          console.log(`✅ LLM closed overlay, element found!`);
+
+          appendHealLog({
+            ts: new Date().toISOString(), intent, oldLocator,
+            newLocator: oldLocator, success: true, healed: true,
+            llmRepaired: true, llmAction: 'CLOSE_OVERLAY', url, domPath: domFile
+          });
+
+          return { element: el, used: primary, healed: true, llmRepaired: true };
+        } catch (_) {
+          console.log(`❌ LLM overlay close didn't work.`);
+        }
+      } else {
+        console.log(`🤖 LLM returned: ${decision.action} (not actionable for element lookup)`);
+      }
+    } catch (llmError) {
+      console.log(`❌ LLM heal error: ${llmError.message}`);
     }
 
-    // 4) Everything failed
-    console.log(`Healing failed. No fallback or LLM selector worked.`);
-
+    // 4) Total failure
+    console.log(`❌ Healing failed. No fallback or LLM repair worked.`);
     appendHealLog({
-      ts: new Date().toISOString(),
-      intent,
-      oldLocator,
-      newLocator: null,
-      success: false,
-      healed: true,
-      url,
-      domPath: domFile,
-      strategy: 'none',
-      error: e1?.message || 'Primary locator failed; fallbacks + LLM also failed'
+      ts: new Date().toISOString(), intent, oldLocator,
+      newLocator: null, success: false, healed: true, llmRepaired: false,
+      url, domPath: domFile, error: 'All healing methods failed'
     });
 
     throw new Error(`findWithHealing failed for intent="${intent}"`);
   }
 }
 
-module.exports = { findWithHealing, saveDomSnapshot };
+module.exports = { findWithHealing, saveDomSnapshot, extractDomSnippet, healPage };
