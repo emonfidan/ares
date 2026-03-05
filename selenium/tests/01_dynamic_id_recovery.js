@@ -8,7 +8,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 
 const { By, until } = require('selenium-webdriver');
 const { buildDriver } = require('../utils/driver');
-const { findWithHealing } = require('../utils/heal');
+const { findWithHealing, injectMutationObserver, getDomMutations } = require('../utils/heal');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const WAIT_MS = 30000;
@@ -22,6 +22,10 @@ const WAIT_MS = 30000;
     await driver.wait(until.elementLocated(By.id('identifier')), WAIT_MS);
     await driver.wait(until.elementLocated(By.id('password')), WAIT_MS);
 
+    // Inject Shadow DOM MutationObserver to track async DOM changes
+    await injectMutationObserver(driver);
+    console.log('   Shadow DOM MutationObserver injected.');
+
     await driver.findElement(By.id('identifier')).sendKeys('clean@example.com');
     await driver.findElement(By.id('password')).sendKeys('Password123!');
 
@@ -33,7 +37,7 @@ const WAIT_MS = 30000;
       By.id('login-button-BROKEN'),  // intentionally wrong
       [],                              // NO fallbacks
       15000,
-      { intent: 'login-button' }
+      { intent: 'login-button', skipHeuristic: true }  // force LLM path to prove TC-01
     );
 
     console.log(`   Healed: ${healed}, LLM Repaired: ${llmRepaired}`);
@@ -48,6 +52,15 @@ const WAIT_MS = 30000;
       until.elementLocated(By.xpath("//*[contains(text(),'Welcome to ARES')]")),
       WAIT_MS
     );
+
+    // Report DOM mutations observed by the Shadow DOM listener during test
+    const mutations = await getDomMutations(driver);
+    console.log(`   Shadow DOM mutations observed: ${mutations.length}`);
+    if (mutations.length > 0) {
+      mutations.slice(0, 3).forEach((m, i) =>
+        console.log(`   [${i + 1}] ${m.type} on <${m.targetTag}> id="${m.targetId}" class="${m.targetClass}"`)
+      );
+    }
 
     console.log('TEST 1 PASS: Login succeeded via LLM self-healing (no hardcoded fallbacks)');
   } catch (err) {
