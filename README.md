@@ -12,6 +12,7 @@ Before running the project, create a `.env` file for both **backend** and **sele
 
 Each folder includes a `.env.example` file.
 
+After you create / or recieve specific keys/codes to use: 
 Copy it and rename it to `.env`.
 
 --- 
