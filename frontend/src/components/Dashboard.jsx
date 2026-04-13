@@ -3,7 +3,7 @@ import './Dashboard.css';
 
 const API_BASE = 'http://localhost:3001';
 
-const Dashboard = ({ user, riskAssessment, onLogout }) => {
+const Dashboard = ({ user, riskAssessment, onLogout, onTakeSurvey }) => {
   const [providers, setProviders] = useState(user.linkedProviders || []);
   const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' });
   const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
@@ -86,6 +86,16 @@ const Dashboard = ({ user, riskAssessment, onLogout }) => {
               Logged in with {user.provider}
             </p>
           )}
+        </div>
+
+        <div className="survey-cta">
+          <button
+            className="survey-cta-btn"
+            id="take-survey-button"
+            onClick={onTakeSurvey}
+          >
+            Take the Bilkent Feedback Survey
+          </button>
         </div>
 
         {/* Linked Login Methods */}

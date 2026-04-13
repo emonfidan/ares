@@ -1,0 +1,263 @@
+{
+  "surveys": [
+    {
+      "surveyId": "bilkent_feedback",
+      "version": 1,
+      "title": "Bilkent University Feedback Survey",
+      "description": "Annual feedback survey for students and faculty at Bilkent University.",
+      "entryQuestion": "q1",
+      "questions": [
+        {
+          "id": "q1",
+          "text": "What is your position?",
+          "type": "single-choice",
+          "options": ["Undergraduate", "Graduate", "PhD", "Faculty"],
+          "required": true,
+          "path": "common"
+        },
+        {
+          "id": "q2",
+          "text": "What is your ID?",
+          "type": "numeric",
+          "required": true,
+          "path": "common",
+          "validation": { "numericOnly": true, "length": 8 }
+        },
+        {
+          "id": "q3",
+          "text": "What is your major?",
+          "type": "dropdown",
+          "options": [
+            "Architecture",
+            "Business Administration",
+            "Chemistry",
+            "Civil Engineering",
+            "Communication and Design",
+            "Computer Engineering",
+            "Economics",
+            "Electrical and Electronics Engineering",
+            "Environmental Engineering",
+            "Graphic Design",
+            "History",
+            "Industrial Engineering",
+            "Interior Architecture and Environmental Design",
+            "International Relations",
+            "Law",
+            "Management",
+            "Mathematics",
+            "Mechanical Engineering",
+            "Molecular Biology and Genetics",
+            "Music",
+            "Philosophy",
+            "Physics",
+            "Political Science and Public Administration",
+            "Psychology",
+            "Tourism and Hotel Management",
+            "Other"
+          ],
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q4",
+          "text": "Have you graduated?",
+          "type": "single-choice",
+          "options": ["Yes", "No"],
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q5",
+          "text": "What year did you graduate?",
+          "type": "dropdown",
+          "options": [
+            "2000", "2001", "2002", "2003", "2004", "2005",
+            "2006", "2007", "2008", "2009", "2010", "2011",
+            "2012", "2013", "2014", "2015", "2016", "2017",
+            "2018", "2019", "2020", "2021", "2022", "2023",
+            "2024", "2025", "2026"
+          ],
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q6",
+          "text": "When do you expect to graduate?",
+          "type": "dropdown",
+          "options": [
+            "2026", "2027", "2028", "2029", "2030",
+            "2031", "2032", "2033", "2034", "2035"
+          ],
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q7",
+          "text": "How likely are you to recommend Bilkent University to a future student?",
+          "type": "scale",
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.5,
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q8",
+          "text": "Do you have written feedback?",
+          "type": "single-choice",
+          "options": ["Yes", "No"],
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q9",
+          "text": "Please share your written feedback.",
+          "type": "open-text",
+          "required": true,
+          "path": "student"
+        },
+        {
+          "id": "q3f",
+          "text": "What is your faculty role?",
+          "type": "single-choice",
+          "options": [
+            "Lecturer",
+            "Part-Time Instructor",
+            "Full-Time Instructor",
+            "Administration",
+            "Research Staff"
+          ],
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q4f",
+          "text": "Which year did you begin working at Bilkent University?",
+          "type": "dropdown",
+          "options": [
+            "1986", "1987", "1988", "1989", "1990",
+            "1991", "1992", "1993", "1994", "1995",
+            "1996", "1997", "1998", "1999", "2000",
+            "2001", "2002", "2003", "2004", "2005",
+            "2006", "2007", "2008", "2009", "2010",
+            "2011", "2012", "2013", "2014", "2015",
+            "2016", "2017", "2018", "2019", "2020",
+            "2021", "2022", "2023", "2024", "2025", "2026"
+          ],
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q5f",
+          "text": "How many courses did you teach during the Spring 2026 semester?",
+          "type": "numeric",
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q6f",
+          "text": "On average, how would you rate your teaching experience at Bilkent University this semester?",
+          "type": "scale",
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.5,
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q7f",
+          "text": "Approximately how many student interactions or cases have you handled this semester?",
+          "type": "numeric",
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q8f",
+          "text": "How would you rate your overall experience supporting students and university operations this semester?",
+          "type": "scale",
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.5,
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q9f",
+          "text": "How would you rate your overall professional experience at Bilkent University this semester?",
+          "type": "scale",
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.5,
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q10f",
+          "text": "Do you currently serve in an advisory role for students?",
+          "type": "single-choice",
+          "options": ["Yes", "No"],
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q11f",
+          "text": "Approximately how many students have you advised this academic year?",
+          "type": "numeric",
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q12f",
+          "text": "How likely are you to recommend Bilkent University to a prospective employee?",
+          "type": "scale",
+          "min": 1.0,
+          "max": 5.0,
+          "step": 0.5,
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q13fg",
+          "text": "Do you have written feedback?",
+          "type": "single-choice",
+          "options": ["Yes", "No"],
+          "required": true,
+          "path": "faculty"
+        },
+        {
+          "id": "q13f",
+          "text": "Please share any written feedback about your experience at Bilkent University.",
+          "type": "open-text",
+          "required": true,
+          "path": "faculty"
+        }
+      ],
+      "edges": [
+        { "from": "q1",  "to": "q2",   "condition": null },
+        { "from": "q2",  "to": "q3",   "condition": { "questionId": "q1", "operator": "notEquals", "value": "Faculty" } },
+        { "from": "q2",  "to": "q3f",  "condition": { "questionId": "q1", "operator": "equals",    "value": "Faculty" } },
+        { "from": "q3",  "to": "q4",   "condition": null },
+        { "from": "q4",  "to": "q5",   "condition": { "questionId": "q4", "operator": "equals",    "value": "Yes" } },
+        { "from": "q4",  "to": "q6",   "condition": { "questionId": "q4", "operator": "equals",    "value": "No" } },
+        { "from": "q5",  "to": "q7",   "condition": null },
+        { "from": "q6",  "to": "q7",   "condition": null },
+        { "from": "q7",  "to": "q8",   "condition": null },
+        { "from": "q8",  "to": "q9",   "condition": { "questionId": "q8", "operator": "equals",    "value": "Yes" } },
+        { "from": "q3f", "to": "q4f",  "condition": null },
+        { "from": "q4f", "to": "q5f",  "condition": { "questionId": "q3f", "operator": "in", "value": ["Lecturer", "Part-Time Instructor", "Full-Time Instructor"] } },
+        { "from": "q4f", "to": "q7f",  "condition": { "questionId": "q3f", "operator": "equals", "value": "Administration" } },
+        { "from": "q4f", "to": "q9f",  "condition": { "questionId": "q3f", "operator": "equals", "value": "Research Staff" } },
+        { "from": "q5f", "to": "q6f",  "condition": null },
+        { "from": "q6f", "to": "q10f", "condition": null },
+        { "from": "q7f", "to": "q8f",  "condition": null },
+        { "from": "q8f", "to": "q10f", "condition": null },
+        { "from": "q9f", "to": "q12f", "condition": null },
+        { "from": "q10f","to": "q11f", "condition": { "questionId": "q10f", "operator": "equals", "value": "Yes" } },
+        { "from": "q10f","to": "q12f", "condition": { "questionId": "q10f", "operator": "equals", "value": "No" } },
+        { "from": "q11f","to": "q12f",  "condition": null },
+        { "from": "q12f","to": "q13fg", "condition": null },
+        { "from": "q13fg","to": "q13f", "condition": { "questionId": "q13fg", "operator": "equals", "value": "Yes" } }
+      ]
+    }
+  ]
+}

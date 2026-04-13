@@ -32,6 +32,32 @@
   font-weight: 700;
 }
 
+.survey-cta {
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.survey-cta-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.survey-cta-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.5);
+}
+
 .logout-button {
   padding: 10px 24px;
   background: #667eea;

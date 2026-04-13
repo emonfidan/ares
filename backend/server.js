@@ -68,6 +68,9 @@ app.set('trust proxy', true);
 app.use(cors());
 app.use(bodyParser.json());
 
+// ─── Survey Routes ────────────────────────────────────────
+app.use('/api/surveys', require('./routes/survey'));
+
 // ─── Config ───────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '569495896866-hnoe9pla7fma4j4lu3cn7ps5brjjiuma.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
