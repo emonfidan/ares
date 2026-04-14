@@ -1,8 +1,9 @@
 {
+  "activeSurveyId": "test_survey",
   "surveys": [
     {
       "surveyId": "bilkent_feedback",
-      "version": 1,
+      "version": 2,
       "title": "Bilkent University Feedback Survey",
       "description": "Annual feedback survey for students and faculty at Bilkent University.",
       "entryQuestion": "q1",
@@ -11,9 +12,14 @@
           "id": "q1",
           "text": "What is your position?",
           "type": "single-choice",
-          "options": ["Undergraduate", "Graduate", "PhD", "Faculty"],
           "required": true,
-          "path": "common"
+          "path": "common",
+          "options": [
+            "Undergraduate",
+            "Graduate",
+            "PhD",
+            "Faculty"
+          ]
         },
         {
           "id": "q2",
@@ -21,12 +27,17 @@
           "type": "numeric",
           "required": true,
           "path": "common",
-          "validation": { "numericOnly": true, "length": 8 }
+          "validation": {
+            "numericOnly": true,
+            "length": 8
+          }
         },
         {
           "id": "q3",
           "text": "What is your major?",
           "type": "dropdown",
+          "required": true,
+          "path": "student",
           "options": [
             "Architecture",
             "Business Administration",
@@ -54,60 +65,94 @@
             "Psychology",
             "Tourism and Hotel Management",
             "Other"
-          ],
-          "required": true,
-          "path": "student"
+          ]
         },
         {
           "id": "q4",
           "text": "Have you graduated?",
           "type": "single-choice",
-          "options": ["Yes", "No"],
           "required": true,
-          "path": "student"
+          "path": "student",
+          "options": [
+            "Yes",
+            "No"
+          ]
         },
         {
           "id": "q5",
           "text": "What year did you graduate?",
           "type": "dropdown",
-          "options": [
-            "2000", "2001", "2002", "2003", "2004", "2005",
-            "2006", "2007", "2008", "2009", "2010", "2011",
-            "2012", "2013", "2014", "2015", "2016", "2017",
-            "2018", "2019", "2020", "2021", "2022", "2023",
-            "2024", "2025", "2026"
-          ],
           "required": true,
-          "path": "student"
+          "path": "student",
+          "options": [
+            "2000",
+            "2001",
+            "2002",
+            "2003",
+            "2004",
+            "2005",
+            "2006",
+            "2007",
+            "2008",
+            "2009",
+            "2010",
+            "2011",
+            "2012",
+            "2013",
+            "2014",
+            "2015",
+            "2016",
+            "2017",
+            "2018",
+            "2019",
+            "2020",
+            "2021",
+            "2022",
+            "2023",
+            "2024",
+            "2025",
+            "2026"
+          ]
         },
         {
           "id": "q6",
           "text": "When do you expect to graduate?",
           "type": "dropdown",
-          "options": [
-            "2026", "2027", "2028", "2029", "2030",
-            "2031", "2032", "2033", "2034", "2035"
-          ],
           "required": true,
-          "path": "student"
+          "path": "student",
+          "options": [
+            "2026",
+            "2027",
+            "2028",
+            "2029",
+            "2030",
+            "2031",
+            "2032",
+            "2033",
+            "2034",
+            "2035"
+          ]
         },
         {
           "id": "q7",
           "text": "How likely are you to recommend Bilkent University to a future student?",
           "type": "scale",
-          "min": 1.0,
-          "max": 5.0,
-          "step": 0.5,
           "required": true,
-          "path": "student"
+          "path": "student",
+          "min": 1,
+          "max": 5,
+          "step": 0.5
         },
         {
           "id": "q8",
           "text": "Do you have written feedback?",
           "type": "single-choice",
-          "options": ["Yes", "No"],
           "required": true,
-          "path": "student"
+          "path": "student",
+          "options": [
+            "Yes",
+            "No"
+          ]
         },
         {
           "id": "q9",
@@ -120,32 +165,65 @@
           "id": "q3f",
           "text": "What is your faculty role?",
           "type": "single-choice",
+          "required": true,
+          "path": "faculty",
           "options": [
             "Lecturer",
             "Part-Time Instructor",
             "Full-Time Instructor",
             "Administration",
             "Research Staff"
-          ],
-          "required": true,
-          "path": "faculty"
+          ]
         },
         {
           "id": "q4f",
           "text": "Which year did you begin working at Bilkent University?",
           "type": "dropdown",
-          "options": [
-            "1986", "1987", "1988", "1989", "1990",
-            "1991", "1992", "1993", "1994", "1995",
-            "1996", "1997", "1998", "1999", "2000",
-            "2001", "2002", "2003", "2004", "2005",
-            "2006", "2007", "2008", "2009", "2010",
-            "2011", "2012", "2013", "2014", "2015",
-            "2016", "2017", "2018", "2019", "2020",
-            "2021", "2022", "2023", "2024", "2025", "2026"
-          ],
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "options": [
+            "1986",
+            "1987",
+            "1988",
+            "1989",
+            "1990",
+            "1991",
+            "1992",
+            "1993",
+            "1994",
+            "1995",
+            "1996",
+            "1997",
+            "1998",
+            "1999",
+            "2000",
+            "2001",
+            "2002",
+            "2003",
+            "2004",
+            "2005",
+            "2006",
+            "2007",
+            "2008",
+            "2009",
+            "2010",
+            "2011",
+            "2012",
+            "2013",
+            "2014",
+            "2015",
+            "2016",
+            "2017",
+            "2018",
+            "2019",
+            "2020",
+            "2021",
+            "2022",
+            "2023",
+            "2024",
+            "2025",
+            "2026"
+          ]
         },
         {
           "id": "q5f",
@@ -158,11 +236,11 @@
           "id": "q6f",
           "text": "On average, how would you rate your teaching experience at Bilkent University this semester?",
           "type": "scale",
-          "min": 1.0,
-          "max": 5.0,
-          "step": 0.5,
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "min": 1,
+          "max": 5,
+          "step": 0.5
         },
         {
           "id": "q7f",
@@ -175,29 +253,32 @@
           "id": "q8f",
           "text": "How would you rate your overall experience supporting students and university operations this semester?",
           "type": "scale",
-          "min": 1.0,
-          "max": 5.0,
-          "step": 0.5,
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "min": 1,
+          "max": 5,
+          "step": 0.5
         },
         {
           "id": "q9f",
           "text": "How would you rate your overall professional experience at Bilkent University this semester?",
           "type": "scale",
-          "min": 1.0,
-          "max": 5.0,
-          "step": 0.5,
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "min": 1,
+          "max": 5,
+          "step": 0.5
         },
         {
           "id": "q10f",
           "text": "Do you currently serve in an advisory role for students?",
           "type": "single-choice",
-          "options": ["Yes", "No"],
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "options": [
+            "Yes",
+            "No"
+          ]
         },
         {
           "id": "q11f",
@@ -210,19 +291,22 @@
           "id": "q12f",
           "text": "How likely are you to recommend Bilkent University to a prospective employee?",
           "type": "scale",
-          "min": 1.0,
-          "max": 5.0,
-          "step": 0.5,
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "min": 1,
+          "max": 5,
+          "step": 0.5
         },
         {
           "id": "q13fg",
           "text": "Do you have written feedback?",
           "type": "single-choice",
-          "options": ["Yes", "No"],
           "required": true,
-          "path": "faculty"
+          "path": "faculty",
+          "options": [
+            "Yes",
+            "No"
+          ]
         },
         {
           "id": "q13f",
@@ -233,31 +317,339 @@
         }
       ],
       "edges": [
-        { "from": "q1",  "to": "q2",   "condition": null },
-        { "from": "q2",  "to": "q3",   "condition": { "questionId": "q1", "operator": "notEquals", "value": "Faculty" } },
-        { "from": "q2",  "to": "q3f",  "condition": { "questionId": "q1", "operator": "equals",    "value": "Faculty" } },
-        { "from": "q3",  "to": "q4",   "condition": null },
-        { "from": "q4",  "to": "q5",   "condition": { "questionId": "q4", "operator": "equals",    "value": "Yes" } },
-        { "from": "q4",  "to": "q6",   "condition": { "questionId": "q4", "operator": "equals",    "value": "No" } },
-        { "from": "q5",  "to": "q7",   "condition": null },
-        { "from": "q6",  "to": "q7",   "condition": null },
-        { "from": "q7",  "to": "q8",   "condition": null },
-        { "from": "q8",  "to": "q9",   "condition": { "questionId": "q8", "operator": "equals",    "value": "Yes" } },
-        { "from": "q3f", "to": "q4f",  "condition": null },
-        { "from": "q4f", "to": "q5f",  "condition": { "questionId": "q3f", "operator": "in", "value": ["Lecturer", "Part-Time Instructor", "Full-Time Instructor"] } },
-        { "from": "q4f", "to": "q7f",  "condition": { "questionId": "q3f", "operator": "equals", "value": "Administration" } },
-        { "from": "q4f", "to": "q9f",  "condition": { "questionId": "q3f", "operator": "equals", "value": "Research Staff" } },
-        { "from": "q5f", "to": "q6f",  "condition": null },
-        { "from": "q6f", "to": "q10f", "condition": null },
-        { "from": "q7f", "to": "q8f",  "condition": null },
-        { "from": "q8f", "to": "q10f", "condition": null },
-        { "from": "q9f", "to": "q12f", "condition": null },
-        { "from": "q10f","to": "q11f", "condition": { "questionId": "q10f", "operator": "equals", "value": "Yes" } },
-        { "from": "q10f","to": "q12f", "condition": { "questionId": "q10f", "operator": "equals", "value": "No" } },
-        { "from": "q11f","to": "q12f",  "condition": null },
-        { "from": "q12f","to": "q13fg", "condition": null },
-        { "from": "q13fg","to": "q13f", "condition": { "questionId": "q13fg", "operator": "equals", "value": "Yes" } }
-      ]
+        {
+          "from": "q1",
+          "to": "q2",
+          "condition": null
+        },
+        {
+          "from": "q2",
+          "to": "q3",
+          "condition": {
+            "questionId": "q1",
+            "operator": "notEquals",
+            "value": "Faculty"
+          }
+        },
+        {
+          "from": "q2",
+          "to": "q3f",
+          "condition": {
+            "questionId": "q1",
+            "operator": "equals",
+            "value": "Faculty"
+          }
+        },
+        {
+          "from": "q3",
+          "to": "q4",
+          "condition": null
+        },
+        {
+          "from": "q4",
+          "to": "q5",
+          "condition": {
+            "questionId": "q4",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        },
+        {
+          "from": "q4",
+          "to": "q6",
+          "condition": {
+            "questionId": "q4",
+            "operator": "equals",
+            "value": "No"
+          }
+        },
+        {
+          "from": "q5",
+          "to": "q7",
+          "condition": null
+        },
+        {
+          "from": "q6",
+          "to": "q7",
+          "condition": null
+        },
+        {
+          "from": "q7",
+          "to": "q8",
+          "condition": null
+        },
+        {
+          "from": "q8",
+          "to": "q9",
+          "condition": {
+            "questionId": "q8",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        },
+        {
+          "from": "q3f",
+          "to": "q4f",
+          "condition": null
+        },
+        {
+          "from": "q4f",
+          "to": "q5f",
+          "condition": {
+            "questionId": "q3f",
+            "operator": "in",
+            "value": [
+              "Lecturer",
+              "Part-Time Instructor",
+              "Full-Time Instructor"
+            ]
+          }
+        },
+        {
+          "from": "q4f",
+          "to": "q7f",
+          "condition": {
+            "questionId": "q3f",
+            "operator": "equals",
+            "value": "Administration"
+          }
+        },
+        {
+          "from": "q4f",
+          "to": "q9f",
+          "condition": {
+            "questionId": "q3f",
+            "operator": "equals",
+            "value": "Research Staff"
+          }
+        },
+        {
+          "from": "q5f",
+          "to": "q6f",
+          "condition": null
+        },
+        {
+          "from": "q6f",
+          "to": "q10f",
+          "condition": null
+        },
+        {
+          "from": "q7f",
+          "to": "q8f",
+          "condition": null
+        },
+        {
+          "from": "q8f",
+          "to": "q10f",
+          "condition": null
+        },
+        {
+          "from": "q9f",
+          "to": "q12f",
+          "condition": null
+        },
+        {
+          "from": "q10f",
+          "to": "q11f",
+          "condition": {
+            "questionId": "q10f",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        },
+        {
+          "from": "q10f",
+          "to": "q12f",
+          "condition": {
+            "questionId": "q10f",
+            "operator": "equals",
+            "value": "No"
+          }
+        },
+        {
+          "from": "q11f",
+          "to": "q12f",
+          "condition": null
+        },
+        {
+          "from": "q12f",
+          "to": "q13fg",
+          "condition": null
+        },
+        {
+          "from": "q13fg",
+          "to": "q13f",
+          "condition": {
+            "questionId": "q13fg",
+            "operator": "equals",
+            "value": "Yes"
+          }
+        }
+      ],
+      "adminEmail": "admin@admin.com"
+    },
+    {
+      "adminEmail": "admin@admin.com",
+      "title": "Student Profile Test Survey",
+      "description": "",
+      "questions": [
+        {
+          "id": "q_1776169846109",
+          "text": "What is your full name?",
+          "type": "open-text",
+          "required": true,
+          "path": "common",
+          "placeholder": "Bob Johnson",
+          "maxLength": 20
+        },
+        {
+          "id": "q_1776169883884",
+          "text": "What Year Were You Born?",
+          "type": "year-dropdown",
+          "required": true,
+          "path": "common",
+          "minYear": 1900,
+          "maxYear": 2026
+        },
+        {
+          "id": "q_1776169901515",
+          "text": "How Old Are You?",
+          "type": "numeric",
+          "required": true,
+          "path": "common",
+          "validation": {
+            "numericOnly": true,
+            "length": 2
+          }
+        },
+        {
+          "id": "q_1776169932891",
+          "text": "What is your student status?",
+          "type": "single-choice",
+          "required": true,
+          "path": "common",
+          "options": [
+            "Undergraduate ",
+            "Graduate ",
+            "PhD ",
+            "Other"
+          ]
+        },
+        {
+          "id": "q_1776169963911",
+          "text": "Please specify your status",
+          "type": "open-text",
+          "required": true,
+          "path": "common",
+          "placeholder": "I am studying abroad",
+          "maxLength": 30
+        },
+        {
+          "id": "q_1776169998454",
+          "text": "How satisfied are you with campus life?",
+          "type": "scale",
+          "required": true,
+          "path": "common",
+          "min": 1,
+          "max": 5,
+          "step": 1
+        },
+        {
+          "id": "q_1776170015616",
+          "text": "What is your favorite campus food?",
+          "type": "dropdown",
+          "required": false,
+          "path": "common",
+          "options": [
+            "Pizza",
+            " Burger ",
+            "Salad ",
+            "Other"
+          ]
+        },
+        {
+          "id": "q_1776170067122",
+          "text": "Please enter your favorite food",
+          "type": "open-text",
+          "required": true,
+          "path": "common",
+          "placeholder": "Pide"
+        },
+        {
+          "id": "q_1776170094198",
+          "text": "Any final comments?",
+          "type": "open-text",
+          "required": false,
+          "path": "common"
+        }
+      ],
+      "edges": [
+        {
+          "from": "q_1776169846109",
+          "to": "q_1776169883884",
+          "condition": null
+        },
+        {
+          "from": "q_1776169883884",
+          "to": "q_1776169901515",
+          "condition": null
+        },
+        {
+          "from": "q_1776169901515",
+          "to": "q_1776169932891",
+          "condition": null
+        },
+        {
+          "from": "q_1776169932891",
+          "to": "q_1776169963911",
+          "condition": {
+            "questionId": "q_1776169932891",
+            "operator": "equals",
+            "value": "Other"
+          }
+        },
+        {
+          "from": "q_1776169932891",
+          "to": "q_1776169998454",
+          "condition": null
+        },
+        {
+          "from": "q_1776169963911",
+          "to": "q_1776169998454",
+          "condition": null
+        },
+        {
+          "from": "q_1776169998454",
+          "to": "q_1776170015616",
+          "condition": null
+        },
+        {
+          "from": "q_1776170015616",
+          "to": "q_1776170067122",
+          "condition": {
+            "questionId": "q_1776170015616",
+            "operator": "equals",
+            "value": "Other"
+          }
+        },
+        {
+          "from": "q_1776170015616",
+          "to": "q_1776170094198",
+          "condition": {
+            "questionId": "q_1776170015616",
+            "operator": "notEquals",
+            "value": "Other"
+          }
+        },
+        {
+          "from": "q_1776170067122",
+          "to": "q_1776170094198",
+          "condition": null
+        }
+      ],
+      "entryQuestion": "q_1776169846109",
+      "surveyId": "test_survey",
+      "version": 2
     }
   ]
 }

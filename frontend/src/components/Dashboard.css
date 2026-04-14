@@ -58,6 +58,31 @@
   box-shadow: 0 6px 18px rgba(102, 126, 234, 0.5);
 }
 
+.admin-cta {
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.admin-cta-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 10px 24px;
+  background: none;
+  color: #555;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.admin-cta-btn:hover {
+  background: #f0f4ff;
+  border-color: #667eea;
+  color: #3730a3;
+}
+
 .logout-button {
   padding: 10px 24px;
   background: #667eea;

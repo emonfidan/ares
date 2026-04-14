@@ -421,6 +421,7 @@ app.post('/api/login', async (req, res) => {
             id: user.id,
             email: user.email,
             name: user.name,
+            role: user.role || 'user',
             accountStatus: user.accountStatus,
             linkedProviders: user.linkedProviders || []
         },
@@ -617,6 +618,7 @@ app.post('/api/auth/google', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                role: user.role || 'user',
                 provider: 'google',
                 accountStatus: user.accountStatus,
                 linkedProviders: user.linkedProviders || []
@@ -706,6 +708,7 @@ app.post('/api/auth/google/e2e', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                role: user.role || 'user',
                 provider: 'google',
                 accountStatus: user.accountStatus,
                 linkedProviders: user.linkedProviders || []
@@ -858,6 +861,7 @@ app.post('/api/auth/github', async (req, res) => {
                 id: user.id,
                 email: user.email,
                 name: user.name,
+                role: user.role || 'user',
                 provider: 'github',
                 accountStatus: user.accountStatus,
                 linkedProviders: user.linkedProviders || []

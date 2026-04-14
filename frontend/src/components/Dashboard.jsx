@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchActiveSurveyId } from '../services/surveyApi';
 import './Dashboard.css';
 
 const API_BASE = 'http://localhost:3001';
 
-const Dashboard = ({ user, riskAssessment, onLogout, onTakeSurvey }) => {
+const Dashboard = ({ user, riskAssessment, onLogout, onTakeSurvey, onGoToAdmin }) => {
   const [providers, setProviders] = useState(user.linkedProviders || []);
   const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' });
   const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
   const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [activeSurveyId, setActiveSurveyId] = useState(null);
+  const [activeSurveyLoading, setActiveSurveyLoading] = useState(true);
+
+  useEffect(() => {
+    fetchActiveSurveyId()
+      .then(id => setActiveSurveyId(id))
+      .catch(() => setActiveSurveyId(null))
+      .finally(() => setActiveSurveyLoading(false));
+  }, []);
 
   const hasPassword = providers.some(p => p.provider === 'password');
 
@@ -92,11 +102,29 @@ const Dashboard = ({ user, riskAssessment, onLogout, onTakeSurvey }) => {
           <button
             className="survey-cta-btn"
             id="take-survey-button"
-            onClick={onTakeSurvey}
+            disabled={activeSurveyLoading || !activeSurveyId}
+            onClick={() => onTakeSurvey(activeSurveyId)}
           >
-            Take the Bilkent Feedback Survey
+            Take the Survey
           </button>
+          {!activeSurveyLoading && !activeSurveyId && (
+            <p className="survey-cta-notice" id="no-active-survey-notice">
+              No active survey is set yet.
+            </p>
+          )}
         </div>
+
+        {user.role === 'admin' && (
+          <div className="admin-cta">
+            <button
+              className="admin-cta-btn"
+              id="admin-survey-builder-button"
+              onClick={onGoToAdmin}
+            >
+              Admin: Build a Survey
+            </button>
+          </div>
+        )}
 
         {/* Linked Login Methods */}
         <div className="info-box" id="linked-providers-section">

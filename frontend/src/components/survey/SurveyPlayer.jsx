@@ -8,7 +8,7 @@ import './SurveyPlayer.css';
 function renderSingleChoice(question, currentAnswer, onAnswerChange) {
     return (
         <div className="choice-group" data-testid={`choices-${question.id}`}>
-            {question.options.map(opt => (
+            {(question.options || []).map(opt => (
                 <button
                     key={opt}
                     type="button"
@@ -31,7 +31,7 @@ function renderDropdown(question, currentAnswer, onAnswerChange) {
             onChange={e => onAnswerChange(question.id, e.target.value)}
         >
             <option value="">Select…</option>
-            {question.options.map(opt => (
+            {(question.options || []).map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
             ))}
         </select>
@@ -73,8 +73,11 @@ function renderNumeric(question, currentAnswer, onAnswerChange) {
 }
 
 function renderScale(question, currentAnswer, onAnswerChange) {
+    const min  = question.min  ?? 1;
+    const max  = question.max  ?? 5;
+    const step = question.step ?? 1;
     const steps = [];
-    for (let v = question.min; v <= question.max; v = Math.round((v + question.step) * 10) / 10) {
+    for (let v = min; v <= max; v = Math.round((v + step) * 10) / 10) {
         steps.push(v);
     }
     return (
@@ -94,14 +97,47 @@ function renderScale(question, currentAnswer, onAnswerChange) {
     );
 }
 
-function renderOpenText(question, currentAnswer, onAnswerChange) {
+function renderYearDropdown(question, currentAnswer, onAnswerChange) {
+    const minYear = question.minYear ?? 1900;
+    const maxYear = question.maxYear ?? new Date().getFullYear();
+    const years = [];
+    for (let y = maxYear; y >= minYear; y--) years.push(y);
     return (
-        <textarea
-            data-testid={`textarea-${question.id}`}
+        <select
+            data-testid={`year-dropdown-${question.id}`}
             value={currentAnswer || ''}
-            rows={4}
             onChange={e => onAnswerChange(question.id, e.target.value)}
-        />
+        >
+            <option value="">Select year…</option>
+            {years.map(y => (
+                <option key={y} value={String(y)}>{y}</option>
+            ))}
+        </select>
+    );
+}
+
+function renderOpenText(question, currentAnswer, onAnswerChange) {
+    const max    = question.maxLength || null;
+    const current = (currentAnswer || '').length;
+    return (
+        <div className="open-text-wrapper">
+            <textarea
+                data-testid={`textarea-${question.id}`}
+                value={currentAnswer || ''}
+                rows={4}
+                maxLength={max || undefined}
+                placeholder={question.placeholder || ''}
+                onChange={e => onAnswerChange(question.id, e.target.value)}
+            />
+            {max && (
+                <span
+                    className={`char-counter${current >= max ? ' char-counter-limit' : ''}`}
+                    data-testid={`char-counter-${question.id}`}
+                >
+                    {current}/{max}
+                </span>
+            )}
+        </div>
     );
 }
 
@@ -111,6 +147,7 @@ function renderOpenText(question, currentAnswer, onAnswerChange) {
 // No state required — derived directly from props on every render.
 
 function getValidationError(question, answers) {
+    if (question.type !== 'numeric') return null;
     const val = question.validation;
     if (!val) return null;
 
@@ -137,12 +174,13 @@ function renderQuestion(question, answers, onAnswerChange) {
     let input;
 
     switch (question.type) {
-        case 'single-choice': input = renderSingleChoice(question, currentAnswer, onAnswerChange); break;
-        case 'dropdown':      input = renderDropdown(question, currentAnswer, onAnswerChange);     break;
-        case 'numeric':       input = renderNumeric(question, currentAnswer, onAnswerChange);      break;
-        case 'scale':         input = renderScale(question, currentAnswer, onAnswerChange);        break;
-        case 'open-text':     input = renderOpenText(question, currentAnswer, onAnswerChange);     break;
-        default:              input = null;
+        case 'single-choice':  input = renderSingleChoice(question, currentAnswer, onAnswerChange);  break;
+        case 'dropdown':       input = renderDropdown(question, currentAnswer, onAnswerChange);      break;
+        case 'numeric':        input = renderNumeric(question, currentAnswer, onAnswerChange);       break;
+        case 'scale':          input = renderScale(question, currentAnswer, onAnswerChange);         break;
+        case 'open-text':      input = renderOpenText(question, currentAnswer, onAnswerChange);      break;
+        case 'year-dropdown':  input = renderYearDropdown(question, currentAnswer, onAnswerChange);  break;
+        default:               input = null;
     }
 
     return (

@@ -114,6 +114,7 @@ function validateAnswers(surveyId, answers = {}) {
     const errors = {};
 
     for (const question of survey.questions) {
+        if (question.type !== 'numeric') continue;
         const val = question.validation;
         if (!val) continue;
 
@@ -156,6 +157,22 @@ function isPathComplete(surveyId, answers = {}) {
     return Object.keys(errors).length === 0;
 }
 
+// ─── Public: Active Survey ────────────────────────────────
+
+function getActiveSurveyId() {
+    const data = loadSurveys();
+    return data.activeSurveyId || null;
+}
+
+function setActiveSurveyId(surveyId) {
+    const surveysData = loadSurveys();
+    const exists = surveysData.surveys.some(s => s.surveyId === surveyId);
+    if (!exists) throw new Error(`Survey "${surveyId}" does not exist`);
+    surveysData.activeSurveyId = surveyId;
+    saveSurveys(surveysData);
+    return surveyId;
+}
+
 // ─── Public: CRUD ─────────────────────────────────────────
 
 function createSurvey(data) {
@@ -191,9 +208,24 @@ function updateSurvey(id, updates) {
     return updated;
 }
 
+function deleteSurvey(id) {
+    const surveysData = loadSurveys();
+    const idx = surveysData.surveys.findIndex(s => s.surveyId === id);
+    if (idx === -1) return false;
+    surveysData.surveys.splice(idx, 1);
+    if (surveysData.activeSurveyId === id) {
+        surveysData.activeSurveyId = null;
+    }
+    saveSurveys(surveysData);
+    return true;
+}
+
 module.exports = {
     getAllSurveys,
     getSurveyById,
+    getActiveSurveyId,
+    setActiveSurveyId,
+    deleteSurvey,
     getVisibleQuestions,
     isPathComplete,
     validateAnswers,

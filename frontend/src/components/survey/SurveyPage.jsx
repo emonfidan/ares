@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import SurveyPlayer from './SurveyPlayer';
 import { fetchSurvey, fetchVisibleQuestions } from '../../services/surveyApi';
 
-const SURVEY_ID = 'bilkent_feedback';
-
 // ─── SurveyPage ───────────────────────────────────────────
 // Smart container responsible for:
 //   - loading the survey definition on mount
@@ -11,8 +9,12 @@ const SURVEY_ID = 'bilkent_feedback';
 //   - re-computing visible questions after every answer change
 //   - detecting survey version changes (groundwork for conflict handling)
 //   - delegating all rendering to SurveyPlayer
+//
+// Props:
+//   surveyId — the survey to load; provided by the caller, never hardcoded here
+//   onBack   — navigate back to wherever the user came from
 
-const SurveyPage = ({ onBack }) => {
+const SurveyPage = ({ surveyId, onBack }) => {
     const [survey, setSurvey]                   = useState(null);
     const [answers, setAnswers]                 = useState({});
     const [visibleQuestions, setVisibleQuestions] = useState([]);
@@ -25,9 +27,18 @@ const SurveyPage = ({ onBack }) => {
     // Used later for version-conflict detection (Project 2 versioning step).
     const sessionVersionRef = useRef(null);
 
+    // ── Guard: surveyId must be present ──
+    useEffect(() => {
+        if (!surveyId) {
+            setError('No survey selected. Please go back and choose a survey.');
+            setLoading(false);
+        }
+    }, [surveyId]);
+
     // ── Load survey once on mount ──
     useEffect(() => {
-        fetchSurvey(SURVEY_ID)
+        if (!surveyId) return;
+        fetchSurvey(surveyId)
             .then(s => {
                 setSurvey(s);
                 sessionVersionRef.current = s.version;
@@ -37,13 +48,13 @@ const SurveyPage = ({ onBack }) => {
                 setError(err.message);
                 setLoading(false);
             });
-    }, []);
+    }, [surveyId]);
 
     // ── Re-compute visible questions whenever answers change ──
     useEffect(() => {
-        if (!survey) return;
+        if (!survey || !surveyId) return;
 
-        fetchVisibleQuestions(SURVEY_ID, answers)
+        fetchVisibleQuestions(surveyId, answers)
             .then(({ visibleQuestions: vq, isComplete: ic, surveyVersion: sv }) => {
                 setVisibleQuestions(vq);
                 setIsComplete(ic);
@@ -85,10 +96,13 @@ const SurveyPage = ({ onBack }) => {
     }
 
     if (error) {
+        // Auto-redirect after 2 seconds so the user sees the message briefly
+        // before being returned to the dashboard safely.
+        setTimeout(onBack, 2000);
         return (
             <div className="survey-error" data-testid="survey-error">
-                <p>Something went wrong: {error}</p>
-                <button onClick={onBack}>Back to Dashboard</button>
+                <p>{error}</p>
+                <p>Returning to dashboard…</p>
             </div>
         );
     }
