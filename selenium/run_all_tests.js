@@ -49,13 +49,20 @@ async function resetUser(email) {
     // optional cleanup before scenario 5
     await resetUser("clean@example.com");
 
+    // ── Project 1 tests ──
     runTest("01_dynamic_id_recovery.js");
     runTest("02_google_popup_overlay.js");
     runTest("03_cross_browser_css_break.js", { BROWSER: "firefox" });
     runTest("03_cross_browser_css_break.js", { BROWSER: "chrome" });
-
     runTest("04_social_auth_handshake.js");
     runTest("05_rate_limit_simulation.js");
+
+    // ── Project 2 tests (Survey + Conflict) ──
+    runTest("06_survey_creation.js");
+    runTest("07_dag_conditional_logic.js");
+    runTest("08_survey_validation.js");
+    runTest("09_admin_crud.js");
+    runTest("10_version_conflict_web.js");
 
     console.log("\nALL TESTS PASSED SUCCESSFULLY\n");
     process.exit(0);
@@ -64,3 +71,4 @@ async function resetUser(email) {
     process.exit(1);
   }
 })();
+

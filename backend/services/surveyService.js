@@ -422,6 +422,21 @@ function submitSurveyResponse(surveyId, answers, userId) {
     return { success: true, responseId: response.responseId };
 }
 
+// ── E2E Test Helpers ─────────────────────────────────────────
+
+/**
+ * Delete all responses for a given surveyId.
+ * Used by E2E tests to clean up stale submissions between runs.
+ */
+function deleteResponsesForSurvey(surveyId) {
+    const data = loadResponses();
+    const before = data.responses.length;
+    data.responses = data.responses.filter(r => r.surveyId !== surveyId);
+    const removed = before - data.responses.length;
+    saveResponses(data);
+    return removed;
+}
+
 module.exports = {
     getAllSurveys,
     getSurveyById,
@@ -440,6 +455,8 @@ module.exports = {
     findLastStableNode,
     // Submission
     submitSurveyResponse,
+    // E2E helpers
+    deleteResponsesForSurvey,
     // Exported for unit testing
     evaluateCondition,
     resolveVisibleQuestionIds,

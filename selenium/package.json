@@ -10,14 +10,20 @@
     "test:scenario2": "node tests/02_google_popup_overlay.js",
     "test:scenario3": "node tests/03_cross_browser_css_break.js",
     "test:scenario4": "node tests/04_social_auth_handshake.js",
-    "test:scenario5": "node tests/05_rate_limit_simulation.js"
+    "test:scenario5": "node tests/05_rate_limit_simulation.js",
+    "test:survey-create": "node tests/06_survey_creation.js",
+    "test:dag-logic": "node tests/07_dag_conditional_logic.js",
+    "test:validation": "node tests/08_survey_validation.js",
+    "test:admin-crud": "node tests/09_admin_crud.js",
+    "test:conflict": "node tests/10_version_conflict_web.js",
+    "test:project2": "node run_project2_tests.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "chromedriver": "^145.0.6",
+    "chromedriver": "^147.0.4",
     "dotenv": "^17.3.1",
     "selenium-webdriver": "^4.41.0"
   },

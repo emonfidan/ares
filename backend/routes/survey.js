@@ -247,5 +247,21 @@ router.post('/:id/submit', (req, res) => {
     }
 });
 
+// ─── DELETE /api/surveys/:id/responses ────────────────────
+// E2E-only: Delete all responses for a survey (test cleanup).
+// Gated behind E2E_MODE=true to prevent accidental use.
+
+router.delete('/:id/responses', (req, res) => {
+    const e2e = (process.env.E2E_MODE || '').toLowerCase() === 'true';
+    if (!e2e) {
+        return res.status(403).json({
+            success: false,
+            message: 'Response cleanup is only available in E2E_MODE.'
+        });
+    }
+    const removed = surveyService.deleteResponsesForSurvey(req.params.id);
+    res.json({ success: true, removed });
+});
+
 module.exports = router;
 
