@@ -977,6 +977,12 @@ app.post('/api/user/set-password', (req, res) => {
 
 // ─── Start Server ────────────────────────────────────────
 
-app.listen(PORT, () => {
-    console.log(`Backend server running on http://localhost:${PORT}`);
-});
+// Only start listening when run directly (not when imported by tests)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Backend server running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
+

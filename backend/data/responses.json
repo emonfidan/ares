@@ -1,0 +1,20 @@
+{
+  "responses": [
+    {
+      "responseId": "resp_1776611037740_mvzhz7",
+      "surveyId": "test_survey",
+      "userId": "clean@example.com",
+      "surveyVersion": 2,
+      "answers": {
+        "q_1776169846109": "Ahmet Muhsin",
+        "q_1776169883884": "2004",
+        "q_1776169901515": "21",
+        "q_1776169932891": "PhD ",
+        "q_1776169998454": 3,
+        "q_1776170015616": "Pizza",
+        "q_1776170094198": "Hurray"
+      },
+      "submittedAt": "2026-04-19T15:03:57.740Z"
+    }
+  ]
+}

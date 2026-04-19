@@ -91,3 +91,32 @@ export async function fetchVisibleQuestions(surveyId, answers) {
         surveyVersion: data.surveyVersion
     };
 }
+
+// Request conflict resolution from the server.
+// Sends the client's answers and the version it was working against.
+//
+// Returns: { hasConflict, surveyVersion, conflict?, recovery? }
+export async function resolveConflict(surveyId, answers, clientVersion) {
+    const res = await fetch(`${API_BASE}/api/surveys/${encodeURIComponent(surveyId)}/resolve-conflict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, clientVersion })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to resolve conflict');
+    return data;
+}
+
+// Submit survey responses to the server.
+// Returns: { responseId } on success.
+export async function submitSurvey(surveyId, answers, userId) {
+    const res = await fetch(`${API_BASE}/api/surveys/${encodeURIComponent(surveyId)}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, userId })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to submit survey');
+    return { responseId: data.responseId };
+}
+

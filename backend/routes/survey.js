@@ -145,4 +145,107 @@ router.delete('/:id', requireAdmin, (req, res) => {
     res.json({ success: true });
 });
 
+// ─── POST /api/surveys/:id/resolve-conflict ───────────────
+// Client sends { answers, clientVersion }.
+// Server compares the client's version with the current survey version and
+// returns a conflict resolution result:
+//   - If no conflict: { hasConflict: false }
+//   - If conflict:    { hasConflict: true, recoveredAnswers, droppedAnswers,
+//                        newVisibleQuestions, stableNode }
+
+router.post('/:id/resolve-conflict', (req, res) => {
+    const { answers = {}, clientVersion } = req.body;
+    const survey = surveyService.getSurveyById(req.params.id);
+    if (!survey) {
+        return res.status(404).json({ success: false, message: 'Survey not found' });
+    }
+
+    // If the versions match, there's no conflict to resolve
+    if (survey.version === clientVersion) {
+        return res.json({
+            success: true,
+            hasConflict: false,
+            surveyVersion: survey.version,
+        });
+    }
+
+    // Try to retrieve the real old survey snapshot from version history.
+    // If unavailable (e.g., server was restarted and lost in-memory history),
+    // fall back to detecting conflicts using only the user's answers against
+    // the new survey structure — this still catches orphaned answers and
+    // unreachable paths.
+    const oldSnapshot = surveyService.getSurveySnapshot(req.params.id, clientVersion);
+
+    let conflictInfo;
+    if (oldSnapshot) {
+        // Best case: we have the real old version to compare against
+        conflictInfo = surveyService.detectConflict(oldSnapshot, survey, answers);
+    } else {
+        // Fallback: no snapshot available — detect by checking user answers
+        // against the new survey structure directly
+        conflictInfo = surveyService.detectConflict(
+            // Construct a minimal "old" survey that only contains the questions
+            // the user has answers for (so deletions/changes are detectable)
+            {
+                ...survey,
+                version: clientVersion,
+                questions: survey.questions.filter(q =>
+                    answers[q.id] !== undefined
+                ),
+            },
+            survey,
+            answers
+        );
+    }
+
+    if (!conflictInfo.hasConflict) {
+        return res.json({
+            success: true,
+            hasConflict: false,
+            surveyVersion: survey.version,
+        });
+    }
+
+    // Perform atomic state recovery
+    const recovery = surveyService.atomicStateRecovery(answers, survey);
+    const stableNode = surveyService.findLastStableNode(answers, survey);
+
+    res.json({
+        success: true,
+        hasConflict: true,
+        surveyVersion: survey.version,
+        conflict: conflictInfo,
+        recovery: {
+            recoveredAnswers: recovery.recoveredAnswers,
+            droppedAnswers: recovery.droppedAnswers,
+            newVisibleQuestions: recovery.newVisibleQuestions,
+            stableNode,
+        },
+    });
+});
+
+// ─── POST /api/surveys/:id/submit ─────────────────────────
+// Submit survey responses.
+// Body: { answers: { ... }, userId: "..." }
+//
+// Validates completeness server-side and persists the response.
+// Rejects duplicate submissions from the same user.
+
+router.post('/:id/submit', (req, res) => {
+    const { answers = {}, userId } = req.body;
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'userId is required' });
+    }
+    try {
+        const result = surveyService.submitSurveyResponse(req.params.id, answers, userId);
+        res.json({ success: true, responseId: result.responseId });
+    } catch (err) {
+        const status = err.message.includes('not found') ? 404
+                     : err.message.includes('already submitted') ? 409
+                     : 400;
+        res.status(status).json({ success: false, message: err.message });
+    }
+});
+
 module.exports = router;
+

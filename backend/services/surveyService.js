@@ -3,6 +3,18 @@ const path = require('path');
 
 const SURVEYS_FILE = path.join(__dirname, '../data/surveys.json');
 
+// ─── Version History ─────────────────────────────────────
+// In-memory store of previous survey versions so that the conflict
+// resolution route can compare the REAL old survey against the new one.
+// Key: "surveyId::version", Value: deep-cloned survey snapshot.
+
+const versionHistory = new Map();
+
+// Retrieve a previously stored snapshot, or null if unavailable.
+function getSurveySnapshot(surveyId, version) {
+    return versionHistory.get(`${surveyId}::${version}`) || null;
+}
+
 // ─── File I/O ────────────────────────────────────────────
 
 function loadSurveys() {
@@ -189,6 +201,8 @@ function createSurvey(data) {
 
 // Update a survey and bump its version number.
 // The surveyId cannot be changed; all other fields are replaced by updates.
+// IMPORTANT: A deep-copy snapshot of the old version is stored in
+// versionHistory so that conflict resolution can compare against it.
 
 function updateSurvey(id, updates) {
     const surveysData = loadSurveys();
@@ -196,6 +210,13 @@ function updateSurvey(id, updates) {
     if (idx === -1) return null;
 
     const current = surveysData.surveys[idx];
+
+    // ── Snapshot the current version before overwriting ──
+    versionHistory.set(
+        `${current.surveyId}::${current.version}`,
+        JSON.parse(JSON.stringify(current))   // deep clone
+    );
+
     const updated = {
         ...current,
         ...updates,
@@ -220,9 +241,191 @@ function deleteSurvey(id) {
     return true;
 }
 
+// ─── Public: Conflict Detection ──────────────────────────
+//
+// Compares an old survey version with a new one, given the user's current
+// answers.  Returns an object describing any conflicts found:
+//   hasConflict        — true if any conflict exists
+//   deletedQuestions   — question IDs that existed in old but not in new
+//   orphanedAnswers    — answered question IDs that no longer exist in new
+//   modifiedEdges      — true if the edge set changed in a way that
+//                        invalidates the current path
+//   newRequiredQuestions — required question IDs added in the new version
+//                          that the user hasn't answered yet
+
+function detectConflict(oldSurvey, newSurvey, answers) {
+    const oldIds = new Set(oldSurvey.questions.map(q => q.id));
+    const newIds = new Set(newSurvey.questions.map(q => q.id));
+    const answerIds = Object.keys(answers).filter(k =>
+        answers[k] !== undefined && answers[k] !== null && answers[k] !== ''
+    );
+
+    // 1. Questions deleted between versions
+    const deletedQuestions = [...oldIds].filter(id => !newIds.has(id));
+
+    // 2. Answers that reference deleted questions
+    const orphanedAnswers = answerIds.filter(id => !newIds.has(id));
+
+    // 3. Check if the current path is still valid under the new edges
+    const newVisible = resolveVisibleQuestionIds(newSurvey, answers);
+    const oldVisible = resolveVisibleQuestionIds(oldSurvey, answers);
+    const modifiedEdges = JSON.stringify(oldVisible) !== JSON.stringify(newVisible);
+
+    // 4. New required questions that weren't in the old version
+    const newRequiredQuestions = newSurvey.questions
+        .filter(q => q.required && !oldIds.has(q.id))
+        .map(q => q.id);
+
+    const hasConflict =
+        deletedQuestions.length > 0 ||
+        orphanedAnswers.length > 0 ||
+        modifiedEdges ||
+        newRequiredQuestions.length > 0;
+
+    return {
+        hasConflict,
+        deletedQuestions,
+        orphanedAnswers,
+        modifiedEdges,
+        newRequiredQuestions,
+    };
+}
+
+// ─── Public: Atomic State Recovery ───────────────────────
+//
+// Re-maps existing answers to the new DAG structure without data loss
+// where possible.  Returns:
+//   recoveredAnswers     — answers that are still valid in the new DAG
+//   droppedAnswers       — question IDs whose answers were discarded
+//   newVisibleQuestions  — visible question objects after recovery
+
+function atomicStateRecovery(answers, newSurvey) {
+    const newQuestionIds = new Set(newSurvey.questions.map(q => q.id));
+
+    // Step 1: Keep only answers whose questions still exist
+    const recoveredAnswers = {};
+    const droppedAnswers = [];
+
+    for (const [qId, value] of Object.entries(answers)) {
+        if (newQuestionIds.has(qId)) {
+            recoveredAnswers[qId] = value;
+        } else {
+            droppedAnswers.push(qId);
+        }
+    }
+
+    // Step 2: Compute the new visible path with recovered answers
+    const visibleIds = resolveVisibleQuestionIds(newSurvey, recoveredAnswers);
+    const visibleSet = new Set(visibleIds);
+
+    // Step 3: Drop answers for questions that exist but are no longer reachable
+    for (const qId of Object.keys(recoveredAnswers)) {
+        if (!visibleSet.has(qId)) {
+            droppedAnswers.push(qId);
+            delete recoveredAnswers[qId];
+        }
+    }
+
+    // Step 4: Build the full visible question objects
+    const questionMap = Object.fromEntries(newSurvey.questions.map(q => [q.id, q]));
+    const newVisibleQuestions = visibleIds.map(id => questionMap[id]).filter(Boolean);
+
+    return {
+        recoveredAnswers,
+        droppedAnswers,
+        newVisibleQuestions,
+    };
+}
+
+// ─── Public: Find Last Stable Node ───────────────────────
+//
+// Walks the new DAG using the existing answers and returns the deepest
+// question ID that:
+//   1. Still exists in the new survey
+//   2. Has a valid answer
+//   3. Is reachable from the entry question
+//
+// Returns null if no answered question is reachable in the new DAG.
+
+function findLastStableNode(answers, newSurvey) {
+    const newQuestionIds = new Set(newSurvey.questions.map(q => q.id));
+
+    // Walk the new DAG with the existing answers
+    const visibleIds = resolveVisibleQuestionIds(newSurvey, answers);
+
+    // Find the deepest visible question that has an answer
+    let lastStable = null;
+    for (const qId of visibleIds) {
+        if (!newQuestionIds.has(qId)) continue;
+        const answer = answers[qId];
+        if (answer !== undefined && answer !== null && answer !== '') {
+            lastStable = qId;
+        }
+    }
+
+    return lastStable;
+}
+
+// ─── Public: Survey Response Submission ──────────────────
+//
+// Persists a completed survey response.  Enforces:
+//   1. Survey must exist
+//   2. Path must be complete (all required visible questions answered + valid)
+//   3. No duplicate submissions from the same user for the same survey
+
+const RESPONSES_FILE = path.join(__dirname, '../data/responses.json');
+
+function loadResponses() {
+    try {
+        const data = fs.readFileSync(RESPONSES_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch {
+        // File doesn't exist yet — start fresh
+        return { responses: [] };
+    }
+}
+
+function saveResponses(data) {
+    fs.writeFileSync(RESPONSES_FILE, JSON.stringify(data, null, 2));
+}
+
+function submitSurveyResponse(surveyId, answers, userId) {
+    const survey = getSurveyById(surveyId);
+    if (!survey) throw new Error(`Survey "${surveyId}" not found`);
+
+    if (!isPathComplete(surveyId, answers)) {
+        throw new Error('Survey is not complete — all required visible questions must be answered');
+    }
+
+    const responsesData = loadResponses();
+
+    // Duplicate check
+    const existing = responsesData.responses.find(
+        r => r.surveyId === surveyId && r.userId === userId
+    );
+    if (existing) {
+        throw new Error(`User "${userId}" has already submitted a response for survey "${surveyId}"`);
+    }
+
+    const response = {
+        responseId: `resp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        surveyId,
+        userId,
+        surveyVersion: survey.version,
+        answers,
+        submittedAt: new Date().toISOString(),
+    };
+
+    responsesData.responses.push(response);
+    saveResponses(responsesData);
+
+    return { success: true, responseId: response.responseId };
+}
+
 module.exports = {
     getAllSurveys,
     getSurveyById,
+    getSurveySnapshot,
     getActiveSurveyId,
     setActiveSurveyId,
     deleteSurvey,
@@ -231,7 +434,14 @@ module.exports = {
     validateAnswers,
     createSurvey,
     updateSurvey,
-    // exported for unit testing
+    // Conflict resolution (GBCR/RCLR)
+    detectConflict,
+    atomicStateRecovery,
+    findLastStableNode,
+    // Submission
+    submitSurveyResponse,
+    // Exported for unit testing
     evaluateCondition,
-    resolveVisibleQuestionIds
+    resolveVisibleQuestionIds,
 };
+

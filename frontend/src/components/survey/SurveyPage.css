@@ -1,0 +1,188 @@
+/* ─── SurveyPage container & conflict resolution styles ─── */
+
+.survey-page-wrapper {
+    position: relative;
+}
+
+/* ─── Conflict Banner ──────────────────────────────────────
+   Spec requirement: "not a simple pop-up message".
+   This renders as a persistent inline banner with animated entry,
+   detailed information, and a manual dismiss action.
+   ───────────────────────────────────────────────────────── */
+
+.conflict-banner {
+    position: relative;
+    margin: 0 auto 1.5rem;
+    max-width: 720px;
+    animation: conflictSlideIn 0.4s ease-out;
+}
+
+@keyframes conflictSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.conflict-banner-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    border-left: 5px solid #f59e0b;
+    background: linear-gradient(135deg,
+        rgba(245, 158, 11, 0.08) 0%,
+        rgba(245, 158, 11, 0.02) 100%);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.conflict-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.conflict-content {
+    flex: 1;
+}
+
+.conflict-content h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #d97706;
+}
+
+.conflict-content p {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #78716c;
+}
+
+.conflict-detail {
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.06);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #57534e;
+}
+
+.conflict-detail strong {
+    color: #b45309;
+}
+
+.conflict-note {
+    font-style: italic;
+    color: #a8a29e !important;
+    font-size: 0.82rem !important;
+}
+
+.conflict-dismiss {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: #f59e0b;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.conflict-dismiss:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* ─── Recovery overlay ─────────────────────────────────── */
+
+.recovery-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.recovery-spinner {
+    text-align: center;
+    padding: 2rem 3rem;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.recovery-spinner p {
+    margin: 1rem 0 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #57534e;
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto;
+    border: 3px solid #e7e5e4;
+    border-top-color: #f59e0b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ─── Loading / Error / Submitted states ───────────────── */
+
+.survey-loading,
+.survey-error,
+.survey-submitted {
+    max-width: 520px;
+    margin: 4rem auto;
+    padding: 2rem;
+    text-align: center;
+    border-radius: 16px;
+    background: #fafaf9;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.survey-error {
+    border-left: 4px solid #ef4444;
+}
+
+.survey-submitted h2 {
+    color: #059669;
+    margin-bottom: 0.5rem;
+}
+
+.survey-submitted button {
+    margin-top: 1rem;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    background: #6366f1;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.survey-submitted button:hover {
+    background: #4f46e5;
+}
