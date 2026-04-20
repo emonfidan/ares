@@ -1,0 +1,22 @@
+{
+  "name": "ares-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium test suite for ARES Mobile Client",
+  "scripts": {
+    "test:all": "node run_all_tests.js",
+    "test:01": "node tests/01_login_success.js",
+    "test:02": "node tests/02_login_failure.js",
+    "test:03": "node tests/03_register_and_login.js",
+    "test:04": "node tests/04_survey_load_dag.js",
+    "test:05": "node tests/05_conditional_branching.js",
+    "test:06": "node tests/06_path_completion.js",
+    "test:07": "node tests/07_numeric_validation.js",
+    "test:08": "node tests/08_submit_survey.js",
+    "test:09": "node tests/09_version_conflict.js",
+    "test:10": "node tests/10_zombie_question_check.js",
+    "test:sync": "node tests/sync_conflict_test.js"
+  },
+  "dependencies": {
+    "webdriverio": "^9.0.0"
+  }
+}
