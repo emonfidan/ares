@@ -19,10 +19,16 @@ async function initDriver() {
         platformName: 'Android',
         'appium:automationName': 'UiAutomator2',
         'appium:deviceName': 'emulator-5554',
-        'appium:app': process.env.APK_PATH || './app.apk',
-        'appium:noReset': false,
-        'appium:newCommandTimeout': 120,
+        'appium:appPackage': 'com.ares.mobile',
+        'appium:appActivity': '.MainActivity',
+        'appium:noReset': true,
+        'appium:dontStopAppOnReset': true,
+        'appium:newCommandTimeout': 180,
         'appium:autoGrantPermissions': true,
+        'appium:uiautomator2ServerLaunchTimeout': 60000,
+        'appium:uiautomator2ServerInstallTimeout': 60000,
+        'appium:appWaitForLaunch': true,
+        'appium:appWaitDuration': 60000,
     };
 
     const driver = await remote({
@@ -34,6 +40,22 @@ async function initDriver() {
     });
 
     return driver;
+}
+
+/**
+ * Restart the app so each test begins at the login screen.
+ * Uses force-stop + activity start for a guaranteed cold restart.
+ */
+async function resetApp(driver) {
+    try {
+        await driver.terminateApp('com.ares.mobile');
+    } catch (_) { /* may already be stopped */ }
+    await sleep(1500);
+    await driver.execute('mobile: shell', {
+        command: 'am',
+        args: ['start', '-n', 'com.ares.mobile/.MainActivity', '-S'],
+    });
+    await sleep(5000); // give Metro + JS bridge time to load
 }
 
 // ─── Element Helpers ─────────────────────────────────────
@@ -118,6 +140,7 @@ async function apiGetSurvey(surveyId) {
 
 module.exports = {
     initDriver,
+    resetApp,
     $label,
     waitForLabel,
     sleep,

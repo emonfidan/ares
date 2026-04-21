@@ -8,7 +8,7 @@
  *   4. Other questions are NOT visible until conditions are met
  */
 
-const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey } = require('../utils/helpers');
+const { initDriver, resetApp, waitForLabel, $label, sleep, apiSetActiveSurvey } = require('../utils/helpers');
 
 (async function test04SurveyLoadDAG() {
     console.log('▶ APPIUM 04 SURVEY LOAD DAG: starting...');
@@ -19,6 +19,7 @@ const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey } = require(
         await apiSetActiveSurvey('bilkent_feedback');
 
         driver = await initDriver();
+        await resetApp(driver);
 
         // Login
         await waitForLabel(driver, 'identifier');

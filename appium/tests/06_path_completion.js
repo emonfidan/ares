@@ -7,7 +7,7 @@
  *   3. The system correctly identifies when the valid path is complete
  */
 
-const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey, apiCreateSurvey, apiDeleteSurvey } = require('../utils/helpers');
+const { initDriver, resetApp, waitForLabel, $label, sleep, apiSetActiveSurvey, apiCreateSurvey, apiDeleteSurvey } = require('../utils/helpers');
 
 const TEST_SURVEY_ID = 'appium_path_test';
 
@@ -34,6 +34,7 @@ const TEST_SURVEY_ID = 'appium_path_test';
         console.log('  ✓ Test survey created and set active');
 
         driver = await initDriver();
+        await resetApp(driver);
 
         // Login → Survey
         await waitForLabel(driver, 'identifier');

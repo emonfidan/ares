@@ -8,7 +8,7 @@
  *   4. Submit → verify "Thank you" screen
  */
 
-const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey, apiCreateSurvey, apiDeleteSurvey, apiDeleteResponses } = require('../utils/helpers');
+const { initDriver, resetApp, waitForLabel, $label, sleep, apiSetActiveSurvey, apiCreateSurvey, apiDeleteSurvey, apiDeleteResponses } = require('../utils/helpers');
 
 const TEST_SURVEY_ID = 'appium_submit_test';
 
@@ -36,6 +36,7 @@ const TEST_SURVEY_ID = 'appium_submit_test';
         console.log('  ✓ Test survey created');
 
         driver = await initDriver();
+        await resetApp(driver);
 
         // Login
         await waitForLabel(driver, 'identifier');

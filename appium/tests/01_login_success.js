@@ -5,7 +5,7 @@
  * Tests the full auth flow: enter credentials → tap login → dashboard appears.
  */
 
-const { initDriver, waitForLabel, $label, sleep } = require('../utils/helpers');
+const { initDriver, resetApp, waitForLabel, $label, sleep } = require('../utils/helpers');
 
 (async function test01LoginSuccess() {
     console.log('▶ APPIUM 01 LOGIN SUCCESS: starting...');
@@ -13,6 +13,7 @@ const { initDriver, waitForLabel, $label, sleep } = require('../utils/helpers');
 
     try {
         driver = await initDriver();
+        await resetApp(driver);
 
         // Wait for login screen
         await waitForLabel(driver, 'identifier');

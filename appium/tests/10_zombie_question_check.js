@@ -14,7 +14,7 @@
  */
 
 const {
-    initDriver, waitForLabel, $label, sleep,
+    initDriver, resetApp, waitForLabel, $label, sleep,
     apiSetActiveSurvey, apiCreateSurvey, apiUpdateSurvey,
     apiDeleteSurvey, apiDeleteResponses, apiGetSurvey,
 } = require('../utils/helpers');
@@ -50,6 +50,7 @@ const TEST_SURVEY_ID = 'appium_zombie_test';
         console.log('  ✓ Branching survey created (root → A | B → end)');
 
         driver = await initDriver();
+        await resetApp(driver);
 
         // Login → Survey
         await waitForLabel(driver, 'identifier');

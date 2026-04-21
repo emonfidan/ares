@@ -8,7 +8,7 @@
  *   4. Verify the toggle works both directions without page reload
  */
 
-const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey } = require('../utils/helpers');
+const { initDriver, resetApp, waitForLabel, $label, sleep, apiSetActiveSurvey } = require('../utils/helpers');
 
 (async function test05ConditionalBranching() {
     console.log('▶ APPIUM 05 CONDITIONAL BRANCHING: starting...');
@@ -18,6 +18,7 @@ const { initDriver, waitForLabel, $label, sleep, apiSetActiveSurvey } = require(
         await apiSetActiveSurvey('bilkent_feedback');
 
         driver = await initDriver();
+        await resetApp(driver);
 
         // Login → Dashboard → Survey
         await waitForLabel(driver, 'identifier');
